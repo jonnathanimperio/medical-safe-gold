@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Medical Safe Gold</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+</head>
+<body>
+  <!-- Custom Title Bar -->
+  <div class="titlebar" id="titlebar">
+    <div class="titlebar-drag">
+      <div class="titlebar-logo">
+        <div class="logo-icon">
+          <span class="material-icons-round">shield</span>
+        </div>
+        <span class="titlebar-title">Medical Safe Gold</span>
+        <span class="titlebar-badge">SaaS</span>
+      </div>
+    </div>
+    <div class="titlebar-controls">
+      <button class="titlebar-btn minimize" id="btn-minimize">
+        <span class="material-icons-round">remove</span>
+      </button>
+      <button class="titlebar-btn maximize" id="btn-maximize">
+        <span class="material-icons-round">crop_square</span>
+      </button>
+      <button class="titlebar-btn close" id="btn-close">
+        <span class="material-icons-round">close</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Activation Screen -->
+  <div class="screen" id="activation-screen">
+    <div class="activation-container">
+      <div class="activation-glow"></div>
+      <div class="activation-card">
+          <div class="activation-icon">
+            <div class="icon-3d icon-3d-xl icon-3d-gold"><span class="material-icons-round">verified_user</span></div>
+            <div class="activation-icon-ring"></div>
+          </div>
+        <h1 class="activation-title" data-t="MEDICAL SAFE GOLD">MEDICAL SAFE GOLD</h1>
+
+        <!-- Auth Tabs -->
+        <div class="auth-tabs">
+          <button class="auth-tab active" id="tab-login" data-t="ENTRAR">ENTRAR</button>
+          <button class="auth-tab" id="tab-register" data-t="CADASTRAR">CADASTRAR</button>
+        </div>
+
+        <!-- Login Form -->
+        <div class="auth-form" id="form-login">
+          <p class="activation-subtitle" data-t="Entre com seu e-mail e senha para acessar.">Entre com seu e-mail e senha para acessar.</p>
+          <div class="activation-input-group">
+            <div class="icon-3d icon-3d-sm icon-3d-dark" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);z-index:2;"><span class="material-icons-round">email</span></div>
+            <input type="email" id="login-email" class="activation-input" data-t-placeholder="E-MAIL" placeholder="E-MAIL">
+          </div>
+          <div class="activation-input-group">
+            <div class="icon-3d icon-3d-sm icon-3d-dark" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);z-index:2;"><span class="material-icons-round">lock</span></div>
+            <input type="password" id="login-password" class="activation-input" data-t-placeholder="SENHA" placeholder="SENHA">
+            <button type="button" class="toggle-password" data-target="login-password"><span class="material-icons-round">visibility_off</span></button>
+          </div>
+          <button class="btn-primary btn-activate" id="btn-login">
+            <div class="icon-3d icon-3d-sm icon-3d-gold" style="pointer-events:none;"><span class="material-icons-round">login</span></div>
+            <span data-t="ENTRAR">ENTRAR</span>
+          </button>
+          <a href="#" id="link-forgot-password" class="forgot-password-link" data-t="Esqueci minha senha">Esqueci minha senha</a>
+        </div>
+
+        <!-- Forgot Password Form -->
+        <div class="auth-form hidden" id="form-forgot-password">
+          <p class="activation-subtitle" data-t="Digite seu e-mail para receber o codigo de recuperacao.">Digite seu e-mail para receber o codigo de recuperacao.</p>
+          <div class="activation-input-group">
+            <div class="icon-3d icon-3d-sm icon-3d-dark" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);z-index:2;"><span class="material-icons-round">email</span></div>
+            <input type="email" id="forgot-email" class="activation-input" data-t-placeholder="E-MAIL" placeholder="E-MAIL">
+          </div>
+          <button class="btn-primary btn-activate" id="btn-send-reset">
+            <div class="icon-3d icon-3d-sm icon-3d-gold" style="pointer-events:none;"><span class="material-icons-round">send</span></div>
+            <span data-t="ENVIAR CODIGO">ENVIAR CODIGO</span>
+          </button>
+          <a href="#" id="link-back-login" class="forgot-password-link" data-t="Voltar ao login">Voltar ao login</a>
+        </div>
+
+        <!-- Reset Password Form -->
+        <div class="auth-form hidden" id="form-reset-password">
+          <p class="activation-subtitle" data-t="Digite o codigo recebido e sua nova senha.">Digite o codigo recebido e sua nova senha.</p>
+          <div class="activation-input-group">
+            <div class="icon-3d icon-3d-sm icon-3d-dark" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);z-index:2;"><span class="material-icons-round">pin</span></div>
+            <input type="text" id="reset-code" class="activation-input" data-t-placeholder="CODIGO DE 6 DIGITOS" placeholder="CODIGO DE 6 DIGITOS" maxlength="6">
+          </div>
+          <div class="activation-input-group">
+            <div class="icon-3d icon-3d-sm icon-3d-dark" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);z-index:2;"><span class="material-icons-round">lock</span></div>
+            <input type="password" id="reset-new-password" class="activation-input" data-t-placeholder="NOVA SENHA" placeholder="NOVA SENHA">
+            <button type="button" class="toggle-password" data-target="reset-new-password"><span class="material-icons-round">visibility_off</span></button>
+          </div>
+          <div class="activation-input-group">
+            <div class="icon-3d icon-3d-sm icon-3d-dark" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);z-index:2;"><span class="material-icons-round">lock_clock</span></div>
+            <input type="password" id="reset-confirm-password" class="activation-input" data-t-placeholder="CONFIRMAR NOVA SENHA" placeholder="CONFIRMAR NOVA SENHA">
+            <button type="button" class="toggle-password" data-target="reset-confirm-password"><span class="material-icons-round">visibility_off</span></button>
+          </div>
+          <button class="btn-primary btn-activate" id="btn-reset-password">
+            <div class="icon-3d icon-3d-sm icon-3d-gold" style="pointer-events:none;"><span class="material-icons-round">lock_reset</span></div>
+            <span data-t="REDEFINIR SENHA">REDEFINIR SENHA</span>
+          </button>
+          <a href="#" id="link-back-login2" class="forgot-password-link" data-t="Voltar ao login">Voltar ao login</a>
+        </div>
+
+        <!-- Register Form -->
+        <div class="auth-form hidden" id="form-register">
+          <p class="activation-subtitle" data-t="Crie sua conta para começar a usar.">Crie sua conta para começar a usar.</p>
+          <div class="activation-input-group">
+            <div class="icon-3d icon-3d-sm icon-3d-dark" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);z-index:2;"><span class="material-icons-round">vpn_key</span></div>
+            <input type="text" id="register-license-key" class="activation-input" data-t-placeholder="CHAVE DE LICENCA" placeholder="CHAVE DE LICENCA" style="text-transform:uppercase;letter-spacing:2px;font-family:'JetBrains Mono',monospace;">
+          </div>
+          <div class="activation-input-group">
+            <div class="icon-3d icon-3d-sm icon-3d-dark" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);z-index:2;"><span class="material-icons-round">email</span></div>
+            <input type="email" id="register-email" class="activation-input" data-t-placeholder="E-MAIL" placeholder="E-MAIL">
+          </div>
+          <div class="activation-input-group">
+            <div class="icon-3d icon-3d-sm icon-3d-dark" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);z-index:2;"><span class="material-icons-round">lock</span></div>
+            <input type="password" id="register-password" class="activation-input" data-t-placeholder="SENHA" placeholder="SENHA">
+            <button type="button" class="toggle-password" data-target="register-password"><span class="material-icons-round">visibility_off</span></button>
+          </div>
+          <div class="activation-input-group">
+            <div class="icon-3d icon-3d-sm icon-3d-dark" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);z-index:2;"><span class="material-icons-round">lock_clock</span></div>
+            <input type="password" id="register-password-confirm" class="activation-input" data-t-placeholder="CONFIRMAR SENHA" placeholder="CONFIRMAR SENHA">
+            <button type="button" class="toggle-password" data-target="register-password-confirm"><span class="material-icons-round">visibility_off</span></button>
+          </div>
+          <button class="btn-primary btn-activate" id="btn-register">
+            <div class="icon-3d icon-3d-sm icon-3d-gold" style="pointer-events:none;"><span class="material-icons-round">person_add</span></div>
+            <span data-t="CRIAR CONTA">CRIAR CONTA</span>
+          </button>
+        </div>
+
+        <div class="activation-error hidden" id="activation-error"></div>
+        <div class="activation-machine-id" id="activation-machine-id"></div>
+        <div class="activation-footer">
+          <div class="icon-3d icon-3d-sm icon-3d-green" style="pointer-events:none;"><span class="material-icons-round">encrypted</span></div>
+          <span data-t="CRIPTOGRAFIA MILITAR AES-256 ATIVA">CRIPTOGRAFIA MILITAR AES-256 ATIVA</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App Screen -->
+  <div class="screen hidden" id="main-screen">
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-top">
+        <div class="server-status" id="server-status">
+          <div class="status-dot" id="status-dot"></div>
+          <span class="status-text" id="status-text" data-t="Conectado">Conectado</span>
+        </div>
+      </div>
+      <div class="nav-items">
+        <button class="nav-item active" data-index="0">
+          <div class="icon-3d icon-3d-dark"><span class="material-icons-round">add_circle</span></div>
+          <span class="nav-label" data-t="NOVO">NOVO</span>
+          <div class="nav-indicator"></div>
+        </button>
+        <button class="nav-item" data-index="1">
+          <div class="icon-3d icon-3d-dark"><span class="material-icons-round">lock</span></div>
+          <span class="nav-label" data-t="COFRE">COFRE</span>
+          <div class="nav-indicator"></div>
+        </button>
+        <button class="nav-item" data-index="2">
+          <div class="icon-3d icon-3d-dark"><span class="material-icons-round">bar_chart</span></div>
+          <span class="nav-label" data-t="RESUMO">RESUMO</span>
+          <div class="nav-indicator"></div>
+        </button>
+        <button class="nav-item" data-index="3">
+          <div class="icon-3d icon-3d-dark"><span class="material-icons-round">search</span></div>
+          <span class="nav-label" data-t="PESQUISAR">PESQUISAR</span>
+          <div class="nav-indicator"></div>
+        </button>
+        <button class="nav-item" data-index="4">
+          <div class="icon-3d icon-3d-dark"><span class="material-icons-round">notifications</span></div>
+          <span class="nav-label" data-t="ALERTAS">ALERTAS</span>
+          <div class="nav-indicator"></div>
+        </button>
+      </div>
+      <div class="sidebar-bottom">
+        <button class="nav-item nav-logout" data-index="5">
+          <div class="icon-3d icon-3d-dark"><span class="material-icons-round">logout</span></div>
+          <span class="nav-label" data-t="SAIR">SAIR</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+      <!-- Top Bar -->
+      <div class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-server">
+            <div class="status-dot-sm" id="status-dot-top"></div>
+            <span class="topbar-server-text" data-t="SERVIDOR ATLAS">SERVIDOR ATLAS</span>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <div class="language-selector">
+            <span class="material-icons-round lang-icon">language</span>
+            <select id="language-select" class="lang-select">
+              <option value="pt">Português</option>
+              <option value="en">English</option>
+              <option value="de">Deutsch</option>
+              <option value="es">Español</option>
+            </select>
+          </div>
+          <div class="topbar-divider"></div>
+          <div class="clock" id="clock">
+            <span class="material-icons-round clock-icon">schedule</span>
+            <span class="clock-time" id="clock-time">00:00:00</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Content Area -->
+      <div class="content-area" id="content-area">
+        <!-- Content is dynamically inserted here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Snackbar -->
+  <div class="snackbar" id="snackbar">
+    <span class="material-icons-round snackbar-icon" id="snackbar-icon">check_circle</span>
+    <span class="snackbar-text" id="snackbar-text"></span>
+  </div>
+
+  <script src="translations.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

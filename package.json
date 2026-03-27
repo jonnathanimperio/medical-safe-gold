@@ -1,0 +1,74 @@
+{
+  "name": "medical-safe-gold",
+  "version": "1.0.0",
+  "description": "Medical Safe Gold - SaaS Edition | Secure Medical Scheduling",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.medicalsafegold.app",
+    "productName": "Medical Safe Gold",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "assets/**/*",
+      "legal/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "appx": {
+      "identityName": "MedicalSafeGold",
+      "applicationId": "MedicalSafeGold",
+      "publisher": "CN=Jonnathan Coelho Silva",
+      "publisherDisplayName": "Jonnathan Coelho Silva",
+      "displayName": "Medical Safe Gold",
+      "languages": ["pt-BR", "en-US", "de-DE", "es-ES"],
+      "backgroundColor": "#0a0a0f"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico",
+      "license": "legal/LICENSE.rtf"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "assets/icon.png"
+    }
+  },
+  "dependencies": {
+    "fernet": "^0.4.0"
+  },
+  "devDependencies": {
+    "electron": "^28.1.0",
+    "electron-builder": "^24.9.1"
+  }
+}

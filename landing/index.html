@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Medical Safe Gold - Secure Medical Scheduling</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+  <style>
+    :root {
+      --gold: #d4af37;
+      --gold-light: #f0d060;
+      --gold-dark: #b8960c;
+      --bg: #0a0a0f;
+      --bg-card: #13131d;
+      --bg-elevated: #181825;
+      --text: #ffffff;
+      --text-secondary: #8888a0;
+      --text-muted: #555566;
+      --border: rgba(255,255,255,0.06);
+      --success: #45c97a;
+      --danger: #e05577;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(180deg, rgba(212,175,55,0.08) 0%, transparent 100%);
+      border-bottom: 1px solid rgba(212,175,55,0.1);
+      padding: 16px 0;
+    }
+    .header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo-shield {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 12px rgba(212,175,55,0.3);
+    }
+    .logo-shield .material-icons-round { font-size: 20px; color: #0a0a0f; }
+    .logo-text { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
+    .logo-badge {
+      background: var(--gold);
+      color: #0a0a0f;
+      font-size: 9px; font-weight: 800;
+      padding: 2px 6px; border-radius: 4px;
+      letter-spacing: 1px;
+    }
+    .nav-links { display: flex; gap: 24px; }
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 13px; font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--gold); }
+
+    /* Language selector */
+    .lang-selector {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 10px;
+    }
+    .lang-selector select {
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 12px;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      outline: none;
+    }
+    .lang-selector select option { background: var(--bg-card); color: var(--text); }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 80px 24px 60px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(212,175,55,0.1);
+      border: 1px solid rgba(212,175,55,0.2);
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 11px; font-weight: 600;
+      color: var(--gold);
+      letter-spacing: 1px;
+      margin-bottom: 24px;
+    }
+    .hero h1 {
+      font-size: 48px; font-weight: 900;
+      background: linear-gradient(135deg, #fff 30%, var(--gold));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      line-height: 1.15;
+      margin-bottom: 20px;
+    }
+    .hero p {
+      font-size: 17px; color: var(--text-secondary);
+      line-height: 1.6; max-width: 600px; margin: 0 auto 40px;
+    }
+
+    /* Pricing */
+    .pricing { max-width: 900px; margin: 0 auto; padding: 0 24px 80px; }
+    .pricing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .pricing-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 36px 28px;
+      position: relative;
+      transition: all 0.3s;
+    }
+    .pricing-card:hover {
+      border-color: rgba(212,175,55,0.2);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+      transform: translateY(-2px);
+    }
+    .pricing-card.featured {
+      border-color: rgba(212,175,55,0.3);
+      background: linear-gradient(180deg, rgba(212,175,55,0.05) 0%, var(--bg-card) 100%);
+    }
+    .pricing-popular {
+      position: absolute; top: -12px; right: 20px;
+      background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+      color: #0a0a0f;
+      font-size: 10px; font-weight: 800;
+      padding: 4px 12px; border-radius: 6px;
+      letter-spacing: 1px;
+    }
+    .pricing-plan { font-size: 13px; color: var(--text-secondary); font-weight: 600; letter-spacing: 1px; margin-bottom: 8px; }
+    .pricing-price { font-size: 42px; font-weight: 900; color: var(--gold); margin-bottom: 4px; }
+    .pricing-price span { font-size: 16px; font-weight: 400; color: var(--text-secondary); }
+    .pricing-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 28px; }
+    .pricing-features { list-style: none; margin-bottom: 28px; }
+    .pricing-features li {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 13px; color: var(--text-secondary);
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .pricing-features li .material-icons-round { font-size: 18px; color: var(--success); }
+
+    .btn-buy {
+      width: 100%;
+      height: 48px;
+      background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+      border: none;
+      border-radius: 10px;
+      color: #0a0a0f;
+      font-size: 14px; font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      letter-spacing: 0.5px;
+      transition: all 0.25s;
+      box-shadow: 0 4px 20px rgba(212,175,55,0.15);
+    }
+    .btn-buy:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 28px rgba(212,175,55,0.25);
+    }
+    .btn-buy.outline {
+      background: transparent;
+      border: 2px solid var(--gold);
+      color: var(--gold);
+      box-shadow: none;
+    }
+    .btn-buy.outline:hover {
+      background: rgba(212,175,55,0.08);
+    }
+
+    /* Features */
+    .features {
+      max-width: 900px; margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+    .features-title {
+      text-align: center;
+      font-size: 28px; font-weight: 800;
+      margin-bottom: 40px;
+      color: var(--gold);
+    }
+    .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 20px;
+      text-align: center;
+      transition: all 0.3s;
+    }
+    .feature-card:hover {
+      border-color: rgba(212,175,55,0.15);
+      transform: translateY(-2px);
+    }
+    .feature-icon {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, var(--gold-light), var(--gold-dark));
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 14px;
+      box-shadow: 0 4px 16px rgba(212,175,55,0.2);
+    }
+    .feature-icon .material-icons-round { font-size: 24px; color: #0a0a0f; }
+    .feature-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+    .feature-card p { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+
+    /* Legal section */
+    .legal-section {
+      max-width: 900px; margin: 0 auto;
+      padding: 0 24px 60px;
+    }
+    .legal-title {
+      text-align: center;
+      font-size: 22px; font-weight: 700;
+      margin-bottom: 24px;
+      color: var(--text-secondary);
+    }
+    .legal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .legal-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex; align-items: center; gap: 14px;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-decoration: none;
+      color: inherit;
+    }
+    .legal-card:hover {
+      border-color: rgba(212,175,55,0.2);
+      background: var(--bg-elevated);
+    }
+    .legal-icon {
+      width: 40px; height: 40px;
+      background: rgba(212,175,55,0.1);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .legal-icon .material-icons-round { font-size: 20px; color: var(--gold); }
+    .legal-card h4 { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+    .legal-card p { font-size: 11px; color: var(--text-muted); }
+
+    /* Footer */
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 24px;
+      text-align: center;
+    }
+    .footer p { font-size: 12px; color: var(--text-muted); }
+    .footer a { color: var(--gold); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+
+    /* Trust badges */
+    .trust-badges {
+      display: flex; justify-content: center; gap: 32px;
+      margin: 40px auto 0;
+      max-width: 600px;
+    }
+    .trust-badge {
+      display: flex; align-items: center; gap: 8px;
+      color: var(--text-muted);
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .trust-badge .material-icons-round { font-size: 20px; color: var(--success); }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 32px; }
+      .pricing-grid { grid-template-columns: 1fr; }
+      .features-grid { grid-template-columns: 1fr; }
+      .legal-grid { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+      .trust-badges { flex-direction: column; align-items: center; gap: 12px; }
+    }
+
+    /* Translations - hidden elements */
+    [data-lang] { display: none; }
+    [data-lang="pt"] { display: initial; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-shield"><span class="material-icons-round">shield</span></div>
+        <span class="logo-text">Medical Safe Gold</span>
+        <span class="logo-badge">SaaS</span>
+      </div>
+      <div class="nav-links">
+        <a href="#features" data-t="nav-features">Recursos</a>
+        <a href="#pricing" data-t="nav-pricing">Planos</a>
+        <a href="#legal" data-t="nav-legal">Documentos Legais</a>
+      </div>
+      <div class="lang-selector">
+        <span class="material-icons-round" style="font-size:16px;color:var(--text-muted);">language</span>
+        <select id="lang-select" onchange="changeLang(this.value)">
+          <option value="pt">Portugues</option>
+          <option value="en">English</option>
+          <option value="de">Deutsch</option>
+          <option value="es">Espanol</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-badge">
+      <span class="material-icons-round" style="font-size:14px;">verified_user</span>
+      <span data-t="hero-badge">CRIPTOGRAFIA MILITAR AES-256</span>
+    </div>
+    <h1 data-t="hero-title">Agendamento Medico Seguro e Criptografado</h1>
+    <p data-t="hero-desc">Proteja os dados dos seus pacientes com criptografia de nivel militar. Sistema completo de agendamento medico com armazenamento seguro no MongoDB Atlas.</p>
+
+    <div class="trust-badges">
+      <div class="trust-badge">
+        <span class="material-icons-round">lock</span>
+        <span data-t="trust-1">AES-256 Encryption</span>
+      </div>
+      <div class="trust-badge">
+        <span class="material-icons-round">cloud_done</span>
+        <span data-t="trust-2">Cloud Backup</span>
+      </div>
+      <div class="trust-badge">
+        <span class="material-icons-round">security</span>
+        <span data-t="trust-3">LGPD / GDPR</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features" id="features">
+    <h2 class="features-title" data-t="features-title">Recursos Principais</h2>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon"><span class="material-icons-round">encrypted</span></div>
+        <h3 data-t="feat-1-title">Criptografia AES-256</h3>
+        <p data-t="feat-1-desc">Todos os dados sao criptografados com algoritmo de nivel militar antes de serem armazenados.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><span class="material-icons-round">cloud_sync</span></div>
+        <h3 data-t="feat-2-title">Backup na Nuvem</h3>
+        <p data-t="feat-2-desc">Armazenamento seguro no MongoDB Atlas com sincronizacao automatica.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><span class="material-icons-round">calendar_month</span></div>
+        <h3 data-t="feat-3-title">Agendamento Completo</h3>
+        <p data-t="feat-3-desc">Gerencie consultas, procedimentos e horarios de forma organizada e segura.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><span class="material-icons-round">notifications_active</span></div>
+        <h3 data-t="feat-4-title">Central de Alertas</h3>
+        <p data-t="feat-4-desc">Alertas automaticos para compromissos da semana com notificacoes em tempo real.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><span class="material-icons-round">search</span></div>
+        <h3 data-t="feat-5-title">Pesquisa Rapida</h3>
+        <p data-t="feat-5-desc">Encontre pacientes e registros instantaneamente no cofre criptografado.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><span class="material-icons-round">translate</span></div>
+        <h3 data-t="feat-6-title">Multi-idioma</h3>
+        <p data-t="feat-6-desc">Interface em Portugues, Ingles, Alemao e Espanhol. Detecta o idioma do sistema.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section class="pricing" id="pricing">
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <div class="pricing-plan" data-t="plan-sub">ASSINATURA MENSAL</div>
+        <div class="pricing-price">R$ 69<span>/mes</span></div>
+        <div class="pricing-desc" data-t="plan-sub-desc">Acesso completo com atualizacoes mensais</div>
+        <ul class="pricing-features">
+          <li><span class="material-icons-round">check_circle</span><span data-t="plan-f1">Todas as funcionalidades</span></li>
+          <li><span class="material-icons-round">check_circle</span><span data-t="plan-f2">Criptografia AES-256</span></li>
+          <li><span class="material-icons-round">check_circle</span><span data-t="plan-f3">Backup na nuvem Atlas</span></li>
+          <li><span class="material-icons-round">check_circle</span><span data-t="plan-f4">Atualizacoes automaticas</span></li>
+          <li><span class="material-icons-round">check_circle</span><span data-t="plan-f5">Suporte por e-mail</span></li>
+        </ul>
+        <button class="btn-buy outline" onclick="window.open('https://www.mercadopago.com.br','_blank')" data-t="btn-subscribe">ASSINAR AGORA</button>
+      </div>
+      <div class="pricing-card featured">
+        <div class="pricing-popular" data-t="popular">MAIS POPULAR</div>
+        <div class="pricing-plan" data-t="plan-annual">PLANO ANUAL</div>
+        <div class="pricing-price">R$ 549<span>/ano</span></div>
+        <div class="pricing-desc" data-t="plan-annual-desc">Economize com o plano anual</div>
+        <ul class="pricing-features">
+          <li><span class="material-icons-round">check_circle</span><span data-t="plan-f1">Todas as funcionalidades</span></li>
+          <li><span class="material-icons-round">check_circle</span><span data-t="plan-f2">Criptografia AES-256</span></li>
+          <li><span class="material-icons-round">check_circle</span><span data-t="plan-f3">Backup na nuvem Atlas</span></li>
+          <li><span class="material-icons-round">check_circle</span><span data-t="plan-f6">Economia de 34%</span></li>
+          <li><span class="material-icons-round">check_circle</span><span data-t="plan-f7">Suporte prioritario</span></li>
+          <li><span class="material-icons-round">check_circle</span><span data-t="plan-f8">Atualizacoes automaticas</span></li>
+        </ul>
+        <button class="btn-buy" onclick="window.open('https://www.mercadopago.com.br','_blank')" data-t="btn-buy-annual">ASSINAR ANUAL</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Legal Documents -->
+  <section class="legal-section" id="legal">
+    <h2 class="legal-title" data-t="legal-title">Documentos Legais</h2>
+    <div class="legal-grid">
+      <a class="legal-card" id="eula-link" href="EULA_pt.md" target="_blank">
+        <div class="legal-icon"><span class="material-icons-round">gavel</span></div>
+        <div>
+          <h4 data-t="eula-title">Termos de Uso (EULA)</h4>
+          <p data-t="eula-desc">Contrato de Licenca de Uso do Usuario Final</p>
+        </div>
+      </a>
+      <a class="legal-card" id="privacy-link" href="privacy.html" target="_blank">
+        <div class="legal-icon"><span class="material-icons-round">privacy_tip</span></div>
+        <div>
+          <h4 data-t="privacy-title">Politica de Privacidade</h4>
+          <p data-t="privacy-desc">Como protegemos seus dados e informacoes</p>
+        </div>
+      </a>
+    </div>
+    <div style="text-align:center;margin-top:20px;">
+      <p style="font-size:12px;color:var(--text-muted);" data-t="legal-note">
+        Ao adquirir o Medical Safe Gold, voce concorda com nossos Termos de Uso e Politica de Privacidade. 
+        Pagamentos processados via gateway externo seguro (Mercado Pago). Dados de cartao NAO sao armazenados.
+        Direito de arrependimento: 7 dias (CDC - Brasil).
+      </p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>&copy; 2026 Medical Safe Gold. <span data-t="footer-rights">Todos os direitos reservados.</span></p>
+    <p style="margin-top:6px;font-size:11px;color:var(--text-muted);">Jonnathan Coelho Silva | CPF: 380.792.048-02 | Rua Aloisio Stofel, n. 45, Bairro Jardim Alvorada</p>
+    <p style="margin-top:8px;">
+      <a href="mailto:jonnathancoelhosilvacoelho@gmail.com">jonnathancoelhosilvacoelho@gmail.com</a> |
+      <a href="https://wa.me/5511948496712">+55 (11) 94849-6712</a>
+    </p>
+  </footer>
+
+  <script>
+    const i18n = {
+      pt: {
+        "nav-features": "Recursos", "nav-pricing": "Planos", "nav-legal": "Documentos Legais",
+        "hero-badge": "CRIPTOGRAFIA MILITAR AES-256",
+        "hero-title": "Agendamento Medico Seguro e Criptografado",
+        "hero-desc": "Proteja os dados dos seus pacientes com criptografia de nivel militar. Sistema completo de agendamento medico com armazenamento seguro no MongoDB Atlas.",
+        "trust-1": "Criptografia AES-256", "trust-2": "Backup na Nuvem", "trust-3": "LGPD / GDPR",
+        "features-title": "Recursos Principais",
+        "feat-1-title": "Criptografia AES-256", "feat-1-desc": "Todos os dados sao criptografados com algoritmo de nivel militar antes de serem armazenados.",
+        "feat-2-title": "Backup na Nuvem", "feat-2-desc": "Armazenamento seguro no MongoDB Atlas com sincronizacao automatica.",
+        "feat-3-title": "Agendamento Completo", "feat-3-desc": "Gerencie consultas, procedimentos e horarios de forma organizada e segura.",
+        "feat-4-title": "Central de Alertas", "feat-4-desc": "Alertas automaticos para compromissos da semana com notificacoes em tempo real.",
+        "feat-5-title": "Pesquisa Rapida", "feat-5-desc": "Encontre pacientes e registros instantaneamente no cofre criptografado.",
+        "feat-6-title": "Multi-idioma", "feat-6-desc": "Interface em Portugues, Ingles, Alemao e Espanhol. Detecta o idioma do sistema.",
+        "plan-sub": "ASSINATURA MENSAL", "plan-sub-desc": "Acesso completo com atualizacoes mensais",
+        "plan-annual": "PLANO ANUAL", "plan-annual-desc": "Economize com o plano anual",
+        "plan-f1": "Todas as funcionalidades", "plan-f2": "Criptografia AES-256", "plan-f3": "Backup na nuvem Atlas",
+        "plan-f4": "Atualizacoes automaticas", "plan-f5": "Suporte por e-mail",
+        "plan-f6": "Economia de 34%", "plan-f7": "Suporte prioritario", "plan-f8": "Atualizacoes automaticas",
+        "btn-subscribe": "ASSINAR MENSAL", "btn-buy-annual": "ASSINAR ANUAL", "popular": "MAIS POPULAR",
+        "legal-title": "Documentos Legais",
+        "eula-title": "Termos de Uso (EULA)", "eula-desc": "Contrato de Licenca de Uso do Usuario Final",
+        "privacy-title": "Politica de Privacidade", "privacy-desc": "Como protegemos seus dados e informacoes",
+        "legal-note": "Ao adquirir o Medical Safe Gold, voce concorda com nossos Termos de Uso e Politica de Privacidade. Pagamentos processados via gateway externo seguro (Mercado Pago). Dados de cartao NAO sao armazenados. Direito de arrependimento: 7 dias (CDC - Brasil).",
+        "footer-rights": "Todos os direitos reservados.",
+        "eula-file": "EULA_pt.md", "privacy-file": "privacy.html"
+      },
+      en: {
+        "nav-features": "Features", "nav-pricing": "Plans", "nav-legal": "Legal Documents",
+        "hero-badge": "MILITARY-GRADE AES-256 ENCRYPTION",
+        "hero-title": "Secure & Encrypted Medical Scheduling",
+        "hero-desc": "Protect your patients' data with military-grade encryption. Complete medical scheduling system with secure storage on MongoDB Atlas.",
+        "trust-1": "AES-256 Encryption", "trust-2": "Cloud Backup", "trust-3": "LGPD / GDPR",
+        "features-title": "Key Features",
+        "feat-1-title": "AES-256 Encryption", "feat-1-desc": "All data is encrypted with military-grade algorithm before storage.",
+        "feat-2-title": "Cloud Backup", "feat-2-desc": "Secure storage on MongoDB Atlas with automatic synchronization.",
+        "feat-3-title": "Complete Scheduling", "feat-3-desc": "Manage appointments, procedures, and schedules in an organized and secure way.",
+        "feat-4-title": "Alert Center", "feat-4-desc": "Automatic alerts for weekly appointments with real-time notifications.",
+        "feat-5-title": "Quick Search", "feat-5-desc": "Find patients and records instantly in the encrypted vault.",
+        "feat-6-title": "Multi-language", "feat-6-desc": "Interface in Portuguese, English, German, and Spanish. Auto-detects system language.",
+        "plan-sub": "MONTHLY SUBSCRIPTION", "plan-sub-desc": "Full access with monthly updates",
+        "plan-annual": "ANNUAL PLAN", "plan-annual-desc": "Save with the annual plan",
+        "plan-f1": "All features", "plan-f2": "AES-256 Encryption", "plan-f3": "Atlas cloud backup",
+        "plan-f4": "Automatic updates", "plan-f5": "Email support",
+        "plan-f6": "Save 34%", "plan-f7": "Priority support", "plan-f8": "Automatic updates",
+        "btn-subscribe": "SUBSCRIBE MONTHLY", "btn-buy-annual": "SUBSCRIBE ANNUAL", "popular": "MOST POPULAR",
+        "legal-title": "Legal Documents",
+        "eula-title": "Terms of Use (EULA)", "eula-desc": "End User License Agreement",
+        "privacy-title": "Privacy Policy", "privacy-desc": "How we protect your data and information",
+        "legal-note": "By purchasing Medical Safe Gold, you agree to our Terms of Use and Privacy Policy. Payments processed via secure external gateway (Mercado Pago). Card data is NOT stored. Right of withdrawal: 7 days.",
+        "footer-rights": "All rights reserved.",
+        "eula-file": "EULA_en.md", "privacy-file": "privacy.html"
+      },
+      de: {
+        "nav-features": "Funktionen", "nav-pricing": "Plaene", "nav-legal": "Rechtliche Dokumente",
+        "hero-badge": "MILITAERISCHE AES-256-VERSCHLUESSELUNG",
+        "hero-title": "Sichere & Verschluesselte Medizinische Terminplanung",
+        "hero-desc": "Schuetzen Sie die Daten Ihrer Patienten mit militaerischer Verschluesselung. Komplettes medizinisches Terminplanungssystem mit sicherer Speicherung auf MongoDB Atlas.",
+        "trust-1": "AES-256-Verschluesselung", "trust-2": "Cloud-Backup", "trust-3": "LGPD / DSGVO",
+        "features-title": "Hauptfunktionen",
+        "feat-1-title": "AES-256-Verschluesselung", "feat-1-desc": "Alle Daten werden vor der Speicherung mit militaerischem Algorithmus verschluesselt.",
+        "feat-2-title": "Cloud-Backup", "feat-2-desc": "Sichere Speicherung auf MongoDB Atlas mit automatischer Synchronisation.",
+        "feat-3-title": "Komplette Terminplanung", "feat-3-desc": "Verwalten Sie Termine, Verfahren und Zeitplaene organisiert und sicher.",
+        "feat-4-title": "Warnungszentrale", "feat-4-desc": "Automatische Warnungen fuer Wochentermine mit Echtzeit-Benachrichtigungen.",
+        "feat-5-title": "Schnelle Suche", "feat-5-desc": "Finden Sie Patienten und Eintraege sofort im verschluesselten Tresor.",
+        "feat-6-title": "Mehrsprachig", "feat-6-desc": "Oberflaeche in Portugiesisch, Englisch, Deutsch und Spanisch. Erkennt automatisch die Systemsprache.",
+        "plan-sub": "MONATSABO", "plan-sub-desc": "Voller Zugang mit monatlichen Updates",
+        "plan-annual": "JAHRESPLAN", "plan-annual-desc": "Sparen Sie mit dem Jahresplan",
+        "plan-f1": "Alle Funktionen", "plan-f2": "AES-256-Verschluesselung", "plan-f3": "Atlas Cloud-Backup",
+        "plan-f4": "Automatische Updates", "plan-f5": "E-Mail-Support",
+        "plan-f6": "34% Ersparnis", "plan-f7": "Prioritaets-Support", "plan-f8": "Automatische Updates",
+        "btn-subscribe": "MONATLICH ABONNIEREN", "btn-buy-annual": "JAEHRLICH ABONNIEREN", "popular": "AM BELIEBTESTEN",
+        "legal-title": "Rechtliche Dokumente",
+        "eula-title": "Nutzungsbedingungen (EULA)", "eula-desc": "Endbenutzer-Lizenzvereinbarung",
+        "privacy-title": "Datenschutzrichtlinie", "privacy-desc": "Wie wir Ihre Daten und Informationen schuetzen",
+        "legal-note": "Mit dem Kauf von Medical Safe Gold stimmen Sie unseren Nutzungsbedingungen und der Datenschutzrichtlinie zu. Zahlungen ueber sicheren externen Gateway (Mercado Pago). Kartendaten werden NICHT gespeichert. Widerrufsrecht: 7 Tage.",
+        "footer-rights": "Alle Rechte vorbehalten.",
+        "eula-file": "EULA_de.md", "privacy-file": "privacy.html"
+      },
+      es: {
+        "nav-features": "Recursos", "nav-pricing": "Planes", "nav-legal": "Documentos Legales",
+        "hero-badge": "CIFRADO MILITAR AES-256",
+        "hero-title": "Programacion Medica Segura y Cifrada",
+        "hero-desc": "Proteja los datos de sus pacientes con cifrado de grado militar. Sistema completo de programacion medica con almacenamiento seguro en MongoDB Atlas.",
+        "trust-1": "Cifrado AES-256", "trust-2": "Backup en la Nube", "trust-3": "LGPD / GDPR",
+        "features-title": "Recursos Principales",
+        "feat-1-title": "Cifrado AES-256", "feat-1-desc": "Todos los datos se cifran con algoritmo de grado militar antes de almacenarse.",
+        "feat-2-title": "Backup en la Nube", "feat-2-desc": "Almacenamiento seguro en MongoDB Atlas con sincronizacion automatica.",
+        "feat-3-title": "Programacion Completa", "feat-3-desc": "Gestione citas, procedimientos y horarios de forma organizada y segura.",
+        "feat-4-title": "Centro de Alertas", "feat-4-desc": "Alertas automaticas para citas de la semana con notificaciones en tiempo real.",
+        "feat-5-title": "Busqueda Rapida", "feat-5-desc": "Encuentre pacientes y registros instantaneamente en la boveda cifrada.",
+        "feat-6-title": "Multi-idioma", "feat-6-desc": "Interfaz en Portugues, Ingles, Aleman y Espanol. Detecta automaticamente el idioma del sistema.",
+        "plan-sub": "SUSCRIPCION MENSUAL", "plan-sub-desc": "Acceso completo con actualizaciones mensuales",
+        "plan-annual": "PLAN ANUAL", "plan-annual-desc": "Ahorre con el plan anual",
+        "plan-f1": "Todas las funcionalidades", "plan-f2": "Cifrado AES-256", "plan-f3": "Backup en nube Atlas",
+        "plan-f4": "Actualizaciones automaticas", "plan-f5": "Soporte por email",
+        "plan-f6": "Ahorro del 34%", "plan-f7": "Soporte prioritario", "plan-f8": "Actualizaciones automaticas",
+        "btn-subscribe": "SUSCRIBIR MENSUAL", "btn-buy-annual": "SUSCRIBIR ANUAL", "popular": "MAS POPULAR",
+        "legal-title": "Documentos Legales",
+        "eula-title": "Terminos de Uso (EULA)", "eula-desc": "Acuerdo de Licencia de Usuario Final",
+        "privacy-title": "Politica de Privacidad", "privacy-desc": "Como protegemos sus datos e informacion",
+        "legal-note": "Al adquirir Medical Safe Gold, usted acepta nuestros Terminos de Uso y Politica de Privacidad. Pagos procesados via gateway externo seguro (Mercado Pago). Datos de tarjeta NO se almacenan. Derecho de desistimiento: 7 dias.",
+        "footer-rights": "Todos los derechos reservados.",
+        "eula-file": "EULA_es.md", "privacy-file": "privacy.html"
+      }
+    };
+
+    let currentLang = 'pt';
+
+    function changeLang(lang) {
+      currentLang = lang;
+      const dict = i18n[lang];
+      if (!dict) return;
+
+      document.querySelectorAll('[data-t]').forEach(el => {
+        const key = el.getAttribute('data-t');
+        if (dict[key]) el.textContent = dict[key];
+      });
+
+      // Update legal document links
+      const eulaLink = document.getElementById('eula-link');
+      const privacyLink = document.getElementById('privacy-link');
+      if (eulaLink && dict['eula-file']) eulaLink.href = dict['eula-file'];
+      if (privacyLink && dict['privacy-file']) privacyLink.href = dict['privacy-file'];
+    }
+
+    // Detect browser language
+    const sysLang = navigator.language?.substring(0, 2) || 'pt';
+    if (['pt', 'en', 'de', 'es'].includes(sysLang)) {
+      document.getElementById('lang-select').value = sysLang;
+      changeLang(sysLang);
+    }
+  </script>
+</body>
+</html>

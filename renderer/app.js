@@ -1,0 +1,1007 @@
+// ========================================
+// Medical Safe Gold - App Logic
+// ========================================
+
+let currentLang = 'pt';
+let clinicaId = null;
+let currentScreen = 0;
+let allAppointments = [];
+
+// --- Translation ---
+function t(key) {
+  if (!key) return '';
+  const lang = currentLang;
+  if (lang === 'pt') return key.toUpperCase();
+  const dict = translations[lang];
+  if (dict && dict[key]) return dict[key].toUpperCase();
+  return key.toUpperCase();
+}
+
+function updateAllTranslations() {
+  document.querySelectorAll('[data-t]').forEach(el => {
+    const key = el.getAttribute('data-t');
+    el.textContent = t(key);
+  });
+  document.querySelectorAll('[data-t-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-t-placeholder');
+    el.placeholder = t(key);
+  });
+}
+
+// --- Snackbar ---
+function showSnack(text, isError = false) {
+  const snackbar = document.getElementById('snackbar');
+  const snackText = document.getElementById('snackbar-text');
+  const snackIcon = document.getElementById('snackbar-icon');
+
+  snackText.textContent = text;
+  snackIcon.textContent = isError ? 'error_outline' : 'check_circle';
+  snackbar.className = isError ? 'snackbar show error' : 'snackbar show';
+
+  setTimeout(() => {
+    snackbar.className = 'snackbar';
+  }, 3000);
+}
+
+// --- Clock ---
+function startClock() {
+  function update() {
+    const now = new Date();
+    const time = now.toLocaleTimeString('pt-BR', { hour12: false });
+    const el = document.getElementById('clock-time');
+    if (el) el.textContent = time;
+  }
+  update();
+  setInterval(update, 1000);
+}
+
+// --- DB Status ---
+async function updateDbStatus() {
+  try {
+    const status = await window.api.getDbStatus();
+    const dot = document.getElementById('status-dot');
+    const dotTop = document.getElementById('status-dot-top');
+    const text = document.getElementById('status-text');
+
+    if (status) {
+      dot && dot.classList.remove('disconnected');
+      dotTop && dotTop.classList.remove('disconnected');
+      if (text) text.textContent = t('Conectado');
+    } else {
+      dot && dot.classList.add('disconnected');
+      dotTop && dotTop.classList.add('disconnected');
+      if (text) text.textContent = t('Desconectado');
+    }
+  } catch (e) {
+    console.error('DB status error:', e);
+  }
+}
+
+// --- Fetch all appointments ---
+async function fetchAppointments() {
+  if (!clinicaId) return [];
+  try {
+    const result = await window.api.getAppointments({ clinicaId });
+    if (result.success) {
+      allAppointments = result.data;
+      return result.data;
+    }
+  } catch (e) {
+    console.error('Fetch error:', e);
+  }
+  return [];
+}
+
+// --- Navigation ---
+function setupNavigation() {
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const index = parseInt(btn.getAttribute('data-index'));
+      setActiveNav(index);
+      showScreen(index);
+    });
+  });
+}
+
+function setActiveNav(index) {
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    const i = parseInt(btn.getAttribute('data-index'));
+    if (i === index) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+  currentScreen = index;
+}
+
+// --- Show Screen ---
+const bgClasses = ['bg-new', 'bg-vault', 'bg-summary', 'bg-search', 'bg-alerts', 'bg-logout'];
+
+async function showScreen(index) {
+  const content = document.getElementById('content-area');
+  content.innerHTML = '';
+  content.scrollTop = 0;
+
+  // Apply background class
+  bgClasses.forEach(cls => content.classList.remove(cls));
+  if (bgClasses[index]) content.classList.add(bgClasses[index]);
+
+  switch (index) {
+    case 0: showNewRecord(content); break;
+    case 1: await showVaultMonths(content); break;
+    case 2: await showSummary(content); break;
+    case 3: showSearch(content); break;
+    case 4: await showAlerts(content); break;
+    case 5: showLogout(content); break;
+  }
+}
+
+// ========================================
+// Screen 0: New Record
+// ========================================
+function showNewRecord(container) {
+  container.innerHTML = `
+    <div class="fade-in">
+      <div class="screen-header">
+        <h1 class="screen-title">${t('NOVO REGISTRO')}</h1>
+        <p class="screen-subtitle">${t('Preencha os dados para criptografia no Atlas')}</p>
+      </div>
+      <div class="form-card">
+        <div class="form-group">
+          <label class="form-label">${t('Nome do Paciente')}</label>
+          <div class="form-input-wrapper">
+            <input type="text" class="form-input" id="input-nome" placeholder="${t('Nome do Paciente')}">
+            <div class="icon-3d icon-3d-sm icon-3d-blue form-input-icon"><span class="material-icons-round">person</span></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">${t('Procedimento')}</label>
+          <div class="form-input-wrapper">
+            <input type="text" class="form-input" id="input-servico" placeholder="${t('Procedimento')}">
+            <div class="icon-3d icon-3d-sm icon-3d-green form-input-icon"><span class="material-icons-round">medical_services</span></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">${t('Data')}</label>
+            <div class="form-input-wrapper">
+              <input type="text" class="form-input" id="input-dia" placeholder="DD/MM/AAAA">
+              <div class="icon-3d icon-3d-sm icon-3d-purple form-input-icon"><span class="material-icons-round">calendar_today</span></div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">${t('Hora')}</label>
+            <div class="form-input-wrapper">
+              <input type="text" class="form-input" id="input-hora" placeholder="HH:MM">
+              <div class="icon-3d icon-3d-sm icon-3d-orange form-input-icon"><span class="material-icons-round">schedule</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">${t('CPF')}</label>
+            <div class="form-input-wrapper">
+              <input type="text" class="form-input" id="input-cpf" placeholder="000.000.000-00">
+              <div class="icon-3d icon-3d-sm icon-3d-cyan form-input-icon"><span class="material-icons-round">badge</span></div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">${t('WhatsApp')}</label>
+            <div class="form-input-wrapper">
+              <input type="text" class="form-input" id="input-whatsapp" placeholder="(00) 00000-0000">
+              <div class="icon-3d icon-3d-sm icon-3d-green form-input-icon"><span class="material-icons-round">phone_iphone</span></div>
+            </div>
+          </div>
+        </div>
+        <button class="btn-save" id="btn-save">
+          <div class="icon-3d icon-3d-sm icon-3d-gold" style="pointer-events:none;"><span class="material-icons-round">lock</span></div>
+          <span>${t('AUTENTICAR E SALVAR')}</span>
+        </button>
+        <div class="encryption-badge">
+          <div class="icon-3d icon-3d-green" style="width:24px;height:24px;border-radius:6px;pointer-events:none;"><span class="material-icons-round" style="font-size:12px;">verified_user</span></div>
+          <span>${t('CRIPTOGRAFIA MILITAR AES-256 ATIVA')}</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('btn-save').addEventListener('click', saveAppointment);
+}
+
+async function saveAppointment() {
+  const nome = document.getElementById('input-nome').value.trim();
+  const servico = document.getElementById('input-servico').value.trim();
+  const dia = document.getElementById('input-dia').value.trim();
+  const hora = document.getElementById('input-hora').value.trim();
+  const cpf = document.getElementById('input-cpf').value.trim();
+  const whatsapp = document.getElementById('input-whatsapp').value.trim();
+
+  if (!nome || !servico) {
+    showSnack(t('Preencha os campos obrigatórios.'), true);
+    return;
+  }
+
+  try {
+    const result = await window.api.saveAppointment({
+      nome, servico, dia, hora, cpf, whatsapp, clinicaId
+    });
+
+    if (result.success) {
+      showSnack(t('Agendamento Seguro e Salvo!'));
+      document.getElementById('input-nome').value = '';
+      document.getElementById('input-servico').value = '';
+      document.getElementById('input-dia').value = '';
+      document.getElementById('input-hora').value = '';
+      document.getElementById('input-cpf').value = '';
+      document.getElementById('input-whatsapp').value = '';
+    } else {
+      const errMsg = result.error || 'UNKNOWN';
+      showSnack(t('Erro ao salvar no Atlas') + ' (' + errMsg + ')', true);
+    }
+  } catch (e) {
+    showSnack(t('Erro ao salvar no Atlas') + ' (CATCH: ' + e.message + ')', true);
+  }
+}
+
+// ========================================
+// Screen 1: Vault - Months
+// ========================================
+async function showVaultMonths(container) {
+  const meses = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril',
+    'Maio', 'Junho', 'Julho', 'Agosto',
+    'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+
+  container.innerHTML = `
+    <div class="fade-in">
+      <div class="screen-header">
+        <h1 class="screen-title">${t('Selecione o Mês')}</h1>
+      </div>
+      <div class="months-grid" id="months-grid"></div>
+    </div>
+  `;
+
+  const grid = document.getElementById('months-grid');
+  meses.forEach((nome, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'month-btn stagger-item';
+    btn.style.animationDelay = `${i * 0.04}s`;
+    btn.textContent = t(nome);
+    btn.addEventListener('click', () => showVaultDays(container, i + 1));
+    grid.appendChild(btn);
+  });
+}
+
+async function showVaultDays(container, mes) {
+  const ano = new Date().getFullYear();
+  const nextMonth = new Date(ano, mes, 1);
+  const lastDay = new Date(nextMonth - 86400000).getDate();
+
+  // Fetch appointments
+  await fetchAppointments();
+
+  // Find days with appointments
+  const daysWithAppointments = new Set();
+  allAppointments.forEach(appt => {
+    try {
+      const parts = appt.dia.split('/');
+      const m = parseInt(parts[1]);
+      const y = parseInt(parts[2]);
+      if (m === mes && y === ano) {
+        daysWithAppointments.add(appt.dia);
+      }
+    } catch (e) {}
+  });
+
+  container.innerHTML = `
+    <div class="fade-in">
+      <button class="back-btn" id="back-to-months">
+        <span class="material-icons-round">arrow_back</span>
+        <span>${t('Mês')} ${String(mes).padStart(2, '0')}/${ano}</span>
+      </button>
+      <div class="days-grid" id="days-grid"></div>
+    </div>
+  `;
+
+  document.getElementById('back-to-months').addEventListener('click', () => showVaultMonths(container));
+
+  const grid = document.getElementById('days-grid');
+  for (let d = 1; d <= lastDay; d++) {
+    const dataStr = `${String(d).padStart(2, '0')}/${String(mes).padStart(2, '0')}/${ano}`;
+    const hasAppt = daysWithAppointments.has(dataStr);
+
+    const cell = document.createElement('div');
+    cell.className = `day-cell stagger-item ${hasAppt ? 'has-appointments' : ''}`;
+    cell.style.animationDelay = `${d * 0.02}s`;
+    cell.textContent = String(d).padStart(2, '0');
+    cell.addEventListener('click', () => showDayAppointments(container, dataStr, mes));
+    grid.appendChild(cell);
+  }
+}
+
+async function showDayAppointments(container, dataStr, mesOrigem) {
+  await fetchAppointments();
+
+  const registros = allAppointments
+    .filter(a => a.dia === dataStr)
+    .sort((a, b) => {
+      try {
+        const [ah, am] = a.hora.split(':').map(Number);
+        const [bh, bm] = b.hora.split(':').map(Number);
+        return (ah * 60 + am) - (bh * 60 + bm);
+      } catch (e) { return 0; }
+    });
+
+  container.innerHTML = `
+    <div class="fade-in">
+      <button class="back-btn" id="back-to-days">
+        <span class="material-icons-round">arrow_back</span>
+        <span>${t('Data:')} ${dataStr}</span>
+      </button>
+      <div id="appointments-list"></div>
+    </div>
+  `;
+
+  document.getElementById('back-to-days').addEventListener('click', () => showVaultDays(container, mesOrigem));
+
+  const list = document.getElementById('appointments-list');
+
+  if (registros.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <span class="material-icons-round">event_busy</span>
+        <p>${t('Nenhum compromisso para os próximos 7 dias.')}</p>
+      </div>
+    `;
+    return;
+  }
+
+  registros.forEach((dados, i) => {
+    const card = document.createElement('div');
+    card.className = 'appointment-card stagger-item';
+    card.style.animationDelay = `${i * 0.06}s`;
+    card.innerHTML = `
+      <div class="appointment-header">
+        <div class="appointment-info">
+          <h3>${dados.nome.toUpperCase()}</h3>
+          <p>${dados.servico}</p>
+        </div>
+        <button class="btn-delete" data-id="${dados.id}" title="Excluir">
+          <span class="material-icons-round">delete_outline</span>
+        </button>
+      </div>
+      <div class="appointment-divider"></div>
+      <div class="appointment-meta">
+        <div class="meta-tag">
+          <span class="material-icons-round">calendar_today</span>
+          <span>${dados.dia}</span>
+        </div>
+        <div class="meta-tag">
+          <span class="material-icons-round">schedule</span>
+          <span>${dados.hora}</span>
+        </div>
+        ${dados.cpf ? `<div class="meta-tag"><span class="material-icons-round">badge</span><span>${dados.cpf}</span></div>` : ''}
+        ${dados.whatsapp ? `<div class="meta-tag"><span class="material-icons-round">phone_iphone</span><span>${dados.whatsapp}</span></div>` : ''}
+        <div class="protected-tag">
+          <span class="material-icons-round">shield</span>
+          <span>${t('PROTEGIDO')}</span>
+        </div>
+      </div>
+    `;
+
+    card.querySelector('.btn-delete').addEventListener('click', async () => {
+      await deleteAppointment(dados.id);
+      showDayAppointments(container, dataStr, mesOrigem);
+    });
+
+    list.appendChild(card);
+  });
+}
+
+async function deleteAppointment(id) {
+  try {
+    const result = await window.api.deleteAppointment({ id, clinicaId });
+    if (result.success) {
+      showSnack(t('Registro removido com segurança.'));
+    } else {
+      showSnack(t('Erro ao excluir registro') + ' (' + (result.error || 'UNKNOWN') + ')', true);
+    }
+  } catch (e) {
+    showSnack(t('Erro ao excluir registro'), true);
+  }
+}
+
+// ========================================
+// Screen 2: Summary
+// ========================================
+async function showSummary(container) {
+  const meses = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril',
+    'Maio', 'Junho', 'Julho', 'Agosto',
+    'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+
+  await fetchAppointments();
+
+  const contagem = {};
+  for (let i = 1; i <= 12; i++) contagem[i] = 0;
+
+  allAppointments.forEach(appt => {
+    try {
+      const parts = appt.dia.split('/');
+      const mesNum = parseInt(parts[1]);
+      if (contagem[mesNum] !== undefined) contagem[mesNum]++;
+    } catch (e) {}
+  });
+
+  container.innerHTML = `
+    <div class="fade-in">
+      <div class="screen-header">
+        <h1 class="screen-title">${t('Resumo Mensal')}</h1>
+      </div>
+      <div class="summary-list" id="summary-list"></div>
+    </div>
+  `;
+
+  const list = document.getElementById('summary-list');
+  meses.forEach((nome, i) => {
+    const item = document.createElement('div');
+    item.className = 'summary-item stagger-item';
+    item.style.animationDelay = `${i * 0.04}s`;
+    item.innerHTML = `
+      <span class="summary-month">${t(nome)}</span>
+      <div class="summary-count">
+        <span class="summary-number">${contagem[i + 1]}</span>
+        <span class="summary-label">${t('agendamento(s)')}</span>
+      </div>
+    `;
+    list.appendChild(item);
+  });
+}
+
+// ========================================
+// Screen 3: Search
+// ========================================
+function showSearch(container) {
+  container.innerHTML = `
+    <div class="fade-in">
+      <div class="screen-header">
+        <h1 class="screen-title" style="color: var(--gold);">${t('PESQUISAR NO COFRE')}</h1>
+      </div>
+      <div class="search-bar">
+        <div class="search-input-wrapper">
+          <input type="text" class="search-input" id="search-input" placeholder="${t('Nome do paciente')}">
+          <span class="material-icons-round search-icon">search</span>
+        </div>
+        <button class="btn-search" id="btn-search">${t('BUSCAR')}</button>
+      </div>
+      <div class="search-results" id="search-results"></div>
+    </div>
+  `;
+
+  const executeSearch = () => performSearch(container);
+  document.getElementById('btn-search').addEventListener('click', executeSearch);
+  document.getElementById('search-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') executeSearch();
+  });
+}
+
+async function performSearch(container) {
+  const termo = document.getElementById('search-input').value.trim().toLowerCase();
+  if (!termo) return;
+
+  const results = document.getElementById('search-results');
+  results.innerHTML = '<div class="spinner"></div>';
+
+  await fetchAppointments();
+
+  const matched = allAppointments.filter(a => a.nome.toLowerCase().includes(termo));
+
+  results.innerHTML = '';
+
+  if (matched.length === 0) {
+    results.innerHTML = `<div class="search-not-found">${t('Paciente não encontrado.')}</div>`;
+    return;
+  }
+
+  matched.forEach((dados, i) => {
+    const card = document.createElement('div');
+    card.className = 'search-result-card stagger-item';
+    card.style.animationDelay = `${i * 0.05}s`;
+    card.innerHTML = `
+      <div class="search-result-icon">
+        <div class="icon-3d icon-3d-gold"><span class="material-icons-round">person_search</span></div>
+      </div>
+      <div class="search-result-info">
+        <div class="search-result-name">${dados.nome.toUpperCase()}</div>
+        <div class="search-result-detail">${dados.servico} | ${dados.dia} - ${dados.hora}${dados.cpf ? ' | CPF: ' + dados.cpf : ''}${dados.whatsapp ? ' | WhatsApp: ' + dados.whatsapp : ''}</div>
+      </div>
+      <button class="btn-delete" data-id="${dados.id}" title="Excluir">
+        <span class="material-icons-round">delete_outline</span>
+      </button>
+    `;
+
+    card.querySelector('.btn-delete').addEventListener('click', async () => {
+      await deleteAppointment(dados.id);
+      // Re-run search
+      performSearch(container);
+    });
+
+    results.appendChild(card);
+  });
+}
+
+// ========================================
+// Screen 4: Alerts
+// ========================================
+async function showAlerts(container) {
+  await fetchAppointments();
+
+  // Get next 7 days
+  const today = new Date();
+  const targetDates = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    targetDates.push(`${dd}/${mm}/${yyyy}`);
+  }
+
+  const weekAppointments = allAppointments
+    .filter(a => targetDates.includes(a.dia))
+    .sort((a, b) => {
+      try {
+        const da = a.dia.split('/').reverse().join('') + a.hora.replace(':', '');
+        const db = b.dia.split('/').reverse().join('') + b.hora.replace(':', '');
+        return da.localeCompare(db);
+      } catch (e) { return 0; }
+    });
+
+  container.innerHTML = `
+    <div class="fade-in">
+      <div class="screen-header">
+        <h1 class="screen-title" style="color: var(--gold);">${t('CENTRAL DE SEGURANÇA E ALERTAS')}</h1>
+      </div>
+
+      <div class="alerts-status-grid">
+        <div class="alert-status-card">
+          <div class="icon-3d icon-3d-lg icon-3d-green"><span class="material-icons-round">cloud_done</span></div>
+          <div class="alert-status-title">${t('BACKUP NUVEM')}</div>
+          <div class="alert-status-value" style="color: var(--success);">${t('SINCRO ATIVA')}</div>
+        </div>
+        <div class="alert-status-card">
+          <div class="icon-3d icon-3d-lg icon-3d-gold"><span class="material-icons-round">shield</span></div>
+          <div class="alert-status-title">${t('CRIPTOGRAFIA')}</div>
+          <div class="alert-status-value" style="color: var(--gold);">${t('MILITAR ATIVA')}</div>
+        </div>
+      </div>
+
+      <div class="alerts-week-card">
+        <div class="alerts-week-header">
+          <div class="icon-3d icon-3d-orange"><span class="material-icons-round">notification_important</span></div>
+          <span class="alerts-week-title">${t('ALERTAS DA SEMANA')}</span>
+        </div>
+        <div class="alerts-week-count">
+          ${weekAppointments.length > 0
+            ? `${weekAppointments.length} ${t('agendamentos detectados para a semana')}`
+            : t('Nenhum compromisso para os próximos 7 dias.')}
+        </div>
+      </div>
+
+      <div id="week-appointments"></div>
+    </div>
+  `;
+
+  const list = document.getElementById('week-appointments');
+  weekAppointments.forEach((p, i) => {
+    const card = document.createElement('div');
+    card.className = 'alert-appointment stagger-item';
+    card.style.animationDelay = `${i * 0.05}s`;
+    card.innerHTML = `
+      <div class="alert-appointment-info">
+        <h4>${(p.nome || '').toUpperCase()}</h4>
+        <p>${(p.servico || t('PROCEDIMENTO')).toUpperCase()}</p>
+      </div>
+      <div class="alert-appointment-time">
+        <div class="meta-row">
+          <span class="material-icons-round">calendar_today</span>
+          <span>${p.dia}</span>
+        </div>
+        <div class="meta-row">
+          <span class="material-icons-round">schedule</span>
+          <span>${p.hora}</span>
+        </div>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+// ========================================
+// Screen 5: Logout
+// ========================================
+function showLogout(container) {
+  container.innerHTML = `
+    <div class="logout-container fade-in">
+      <div class="logout-card">
+        <div class="logout-icon">
+          <div class="icon-3d icon-3d-xl icon-3d-red"><span class="material-icons-round">logout</span></div>
+        </div>
+        <h2 class="logout-title">${t('DESEJA REALMENTE SAIR?')}</h2>
+        <p class="logout-subtitle">${t('AO SAIR, O CRM SERÁ DESCONECTADO DESTE DISPOSITIVO POR SEGURANÇA.')}</p>
+        <div class="logout-actions">
+          <button class="btn-danger" id="btn-confirm-logout">${t('SIM, ENCERRAR')}</button>
+          <button class="btn-outline" id="btn-cancel-logout">${t('CANCELAR')}</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('btn-confirm-logout').addEventListener('click', confirmLogout);
+  document.getElementById('btn-cancel-logout').addEventListener('click', () => {
+    setActiveNav(0);
+    showScreen(0);
+  });
+}
+
+function confirmLogout() {
+  localStorage.removeItem('clinica_id');
+  localStorage.removeItem('user_email');
+  localStorage.removeItem('crm_medico');
+  clinicaId = null;
+
+  const content = document.getElementById('content-area');
+  content.innerHTML = `
+    <div class="session-ended fade-in">
+      <div class="icon-3d icon-3d-xl icon-3d-gold"><span class="material-icons-round">lock_reset</span></div>
+      <h2>${t('SESSÃO ENCERRADA')}</h2>
+      <div class="progress-bar"><div class="progress-bar-fill"></div></div>
+    </div>
+  `;
+
+  setTimeout(() => {
+    // Show activation screen again
+    document.getElementById('main-screen').classList.add('hidden');
+    document.getElementById('activation-screen').classList.remove('hidden');
+  }, 1800);
+}
+
+// ========================================
+// Language Change
+// ========================================
+function setupLanguage() {
+  const select = document.getElementById('language-select');
+  if (!select) return;
+
+  // Detect system language
+  const sysLang = navigator.language?.substring(0, 2) || 'pt';
+  if (['pt', 'en', 'de', 'es'].includes(sysLang)) {
+    select.value = sysLang;
+    currentLang = sysLang;
+  }
+
+  select.addEventListener('change', (e) => {
+    currentLang = e.target.value;
+    updateAllTranslations();
+    // Re-render current screen
+    showScreen(currentScreen);
+    // Update nav labels
+    const navLabels = ['NOVO', 'COFRE', 'RESUMO', 'PESQUISAR', 'ALERTAS'];
+    document.querySelectorAll('.nav-items .nav-label').forEach((el, i) => {
+      if (navLabels[i]) el.textContent = t(navLabels[i]);
+    });
+    const logoutLabel = document.querySelector('.nav-logout .nav-label');
+    if (logoutLabel) logoutLabel.textContent = t('SAIR');
+  });
+}
+
+// ========================================
+// Authentication (Login / Register)
+// ========================================
+async function setupActivation() {
+  const tabLogin = document.getElementById('tab-login');
+  const tabRegister = document.getElementById('tab-register');
+  const formLogin = document.getElementById('form-login');
+  const formRegister = document.getElementById('form-register');
+  const errorDiv = document.getElementById('activation-error');
+  const machineIdDiv = document.getElementById('activation-machine-id');
+
+  // Show machine ID
+  try {
+    const mid = await window.api.getMachineId();
+    if (machineIdDiv) {
+      machineIdDiv.innerHTML = `<span class="material-icons-round" style="font-size:14px;vertical-align:middle;margin-right:4px;">computer</span>ID: ${mid}`;
+    }
+  } catch (e) {}
+
+  const formForgot = document.getElementById('form-forgot-password');
+  const formReset = document.getElementById('form-reset-password');
+
+  function hideAllForms() {
+    formLogin.classList.add('hidden');
+    formRegister.classList.add('hidden');
+    if (formForgot) formForgot.classList.add('hidden');
+    if (formReset) formReset.classList.add('hidden');
+    if (errorDiv) { errorDiv.classList.add('hidden'); errorDiv.textContent = ''; }
+  }
+
+  // --- Tab switching ---
+  tabLogin.addEventListener('click', () => {
+    tabLogin.classList.add('active');
+    tabRegister.classList.remove('active');
+    hideAllForms();
+    formLogin.classList.remove('hidden');
+  });
+  tabRegister.addEventListener('click', () => {
+    tabRegister.classList.add('active');
+    tabLogin.classList.remove('active');
+    hideAllForms();
+    formRegister.classList.remove('hidden');
+  });
+
+  // --- Forgot Password link ---
+  const linkForgot = document.getElementById('link-forgot-password');
+  if (linkForgot) {
+    linkForgot.addEventListener('click', (e) => {
+      e.preventDefault();
+      hideAllForms();
+      formForgot.classList.remove('hidden');
+    });
+  }
+
+  // --- Back to login links ---
+  const linkBack1 = document.getElementById('link-back-login');
+  const linkBack2 = document.getElementById('link-back-login2');
+  [linkBack1, linkBack2].forEach(link => {
+    if (link) {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        hideAllForms();
+        formLogin.classList.remove('hidden');
+      });
+    }
+  });
+
+  // --- Toggle Password Visibility ---
+  document.querySelectorAll('.toggle-password').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-target');
+      const input = document.getElementById(targetId);
+      if (!input) return;
+      const icon = btn.querySelector('.material-icons-round');
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.textContent = 'visibility';
+        btn.classList.add('active');
+      } else {
+        input.type = 'password';
+        icon.textContent = 'visibility_off';
+        btn.classList.remove('active');
+      }
+    });
+  });
+
+  // --- Email validation helper ---
+  function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  // --- LOGIN ---
+  const btnLogin = document.getElementById('btn-login');
+  const loginEmail = document.getElementById('login-email');
+  const loginPassword = document.getElementById('login-password');
+
+  btnLogin.addEventListener('click', async () => {
+    const email = loginEmail.value.trim();
+    const password = loginPassword.value;
+
+    if (!email) { showSnack(t('Digite seu e-mail!'), true); return; }
+    if (!isValidEmail(email)) { showSnack(t('E-mail inválido!'), true); return; }
+    if (!password) { showSnack(t('Digite sua senha!'), true); return; }
+
+    btnLogin.disabled = true;
+    btnLogin.style.opacity = '0.6';
+    if (errorDiv) { errorDiv.classList.add('hidden'); errorDiv.textContent = ''; }
+
+    try {
+      const result = await window.api.loginUser({ email, password });
+      if (result.success) {
+        clinicaId = result.clinicaId || email;
+        localStorage.setItem('clinica_id', clinicaId);
+        localStorage.setItem('user_email', email);
+        showSnack(t('Login realizado com sucesso!'));
+        showMainScreen();
+      } else {
+        let msg = t('Erro de Conexão');
+        if (result.error === 'USER_NOT_FOUND') msg = t('Usuário não encontrado!');
+        else if (result.error === 'WRONG_PASSWORD') msg = t('Senha incorreta!');
+        else if (result.error === 'SUBSCRIPTION_EXPIRED') msg = t('Assinatura expirada! Renove seu plano.');
+        else if (result.error === 'DB_NOT_CONNECTED' || result.error === 'API_ERROR') msg = t('Erro de Conexão');
+        if (errorDiv) { errorDiv.textContent = msg; errorDiv.classList.remove('hidden'); }
+        showSnack(msg, true);
+      }
+    } catch (e) {
+      if (errorDiv) { errorDiv.textContent = t('Erro de Conexão'); errorDiv.classList.remove('hidden'); }
+      showSnack(t('Erro de Conexão'), true);
+    }
+
+    btnLogin.disabled = false;
+    btnLogin.style.opacity = '1';
+  });
+
+  // Enter key on login fields
+  loginEmail.addEventListener('keydown', (e) => { if (e.key === 'Enter') loginPassword.focus(); });
+  loginPassword.addEventListener('keydown', (e) => { if (e.key === 'Enter') btnLogin.click(); });
+
+  // --- REGISTER ---
+  const btnRegister = document.getElementById('btn-register');
+  const registerEmail = document.getElementById('register-email');
+  const registerPassword = document.getElementById('register-password');
+  const registerPasswordConfirm = document.getElementById('register-password-confirm');
+  const registerLicenseKey = document.getElementById('register-license-key');
+
+  btnRegister.addEventListener('click', async () => {
+    const licenseKey = registerLicenseKey ? registerLicenseKey.value.trim().toUpperCase() : '';
+    const email = registerEmail.value.trim();
+    const password = registerPassword.value;
+    const passwordConfirm = registerPasswordConfirm.value;
+
+    if (!licenseKey) { showSnack(t('Digite sua chave de licenca!'), true); return; }
+    if (!email) { showSnack(t('Digite seu e-mail!'), true); return; }
+    if (!isValidEmail(email)) { showSnack(t('E-mail inválido!'), true); return; }
+    if (!password) { showSnack(t('Digite sua senha!'), true); return; }
+    if (password.length < 8) { showSnack(t('A senha deve ter pelo menos 8 caracteres!'), true); return; }
+    if (password !== passwordConfirm) { showSnack(t('As senhas não coincidem!'), true); return; }
+
+    btnRegister.disabled = true;
+    btnRegister.style.opacity = '0.6';
+    if (errorDiv) { errorDiv.classList.add('hidden'); errorDiv.textContent = ''; }
+
+    try {
+      const result = await window.api.registerUser({ email, password, licenseKey });
+      if (result.success) {
+        clinicaId = result.clinicaId || email;
+        localStorage.setItem('clinica_id', clinicaId);
+        localStorage.setItem('user_email', email);
+        showSnack(t('Conta criada com sucesso!'));
+        showMainScreen();
+      } else {
+        let msg = t('Erro de Conexão');
+        if (result.error === 'USER_EXISTS') msg = t('Este e-mail já está cadastrado!');
+        else if (result.error === 'MISSING_FIELDS') msg = t('Preencha os campos obrigatórios.');
+        else if (result.error === 'INVALID_LICENSE_KEY') msg = t('Chave de licenca invalida!');
+        else if (result.error === 'LICENSE_ALREADY_USED') msg = t('Chave de licenca ja utilizada!');
+        else if (result.error === 'LICENSE_REVOKED') msg = t('Chave de licenca revogada!');
+        else if (result.error === 'MISSING_LICENSE_KEY') msg = t('Digite sua chave de licenca!');
+        else if (result.error === 'DB_NOT_CONNECTED' || result.error === 'API_ERROR') msg = t('Erro de Conexão');
+        if (errorDiv) { errorDiv.textContent = msg; errorDiv.classList.remove('hidden'); }
+        showSnack(msg, true);
+      }
+    } catch (e) {
+      if (errorDiv) { errorDiv.textContent = t('Erro de Conexão'); errorDiv.classList.remove('hidden'); }
+      showSnack(t('Erro de Conexão'), true);
+    }
+
+    btnRegister.disabled = false;
+    btnRegister.style.opacity = '1';
+  });
+
+  // Enter key on register fields
+  if (registerLicenseKey) registerLicenseKey.addEventListener('keydown', (e) => { if (e.key === 'Enter') registerEmail.focus(); });
+  registerEmail.addEventListener('keydown', (e) => { if (e.key === 'Enter') registerPassword.focus(); });
+  registerPassword.addEventListener('keydown', (e) => { if (e.key === 'Enter') registerPasswordConfirm.focus(); });
+  registerPasswordConfirm.addEventListener('keydown', (e) => { if (e.key === 'Enter') btnRegister.click(); });
+
+  // --- FORGOT PASSWORD ---
+  const btnSendReset = document.getElementById('btn-send-reset');
+  const forgotEmail = document.getElementById('forgot-email');
+
+  if (btnSendReset) {
+    btnSendReset.addEventListener('click', async () => {
+      const email = forgotEmail.value.trim();
+      if (!email) { showSnack(t('Digite seu e-mail!'), true); return; }
+      if (!isValidEmail(email)) { showSnack(t('E-mail inválido!'), true); return; }
+
+      btnSendReset.disabled = true;
+      btnSendReset.style.opacity = '0.6';
+
+      try {
+        const result = await window.api.forgotPassword({ email });
+        if (result.success) {
+          showSnack(t('Codigo enviado para seu e-mail!'));
+          // Store email for reset step
+          if (formReset) {
+            formReset.dataset.email = email;
+          }
+          hideAllForms();
+          formReset.classList.remove('hidden');
+          // If debug code is returned (SMTP not configured), show it
+          if (result._debug_code) {
+            showSnack(`Codigo: ${result._debug_code}`, false);
+          }
+        } else {
+          showSnack(t('Erro de Conexão'), true);
+        }
+      } catch (e) {
+        showSnack(t('Erro de Conexão'), true);
+      }
+
+      btnSendReset.disabled = false;
+      btnSendReset.style.opacity = '1';
+    });
+  }
+
+  // --- RESET PASSWORD ---
+  const btnResetPassword = document.getElementById('btn-reset-password');
+  const resetCode = document.getElementById('reset-code');
+  const resetNewPassword = document.getElementById('reset-new-password');
+  const resetConfirmPassword = document.getElementById('reset-confirm-password');
+
+  if (btnResetPassword) {
+    btnResetPassword.addEventListener('click', async () => {
+      const code = resetCode.value.trim();
+      const newPassword = resetNewPassword.value;
+      const confirmPassword = resetConfirmPassword.value;
+
+      if (!code) { showSnack(t('Digite o codigo!'), true); return; }
+      if (code.length !== 6) { showSnack(t('O codigo deve ter 6 digitos!'), true); return; }
+      if (!newPassword) { showSnack(t('Digite sua senha!'), true); return; }
+      if (newPassword.length < 8) { showSnack(t('A senha deve ter pelo menos 8 caracteres!'), true); return; }
+      if (newPassword !== confirmPassword) { showSnack(t('As senhas não coincidem!'), true); return; }
+
+      btnResetPassword.disabled = true;
+      btnResetPassword.style.opacity = '0.6';
+
+      try {
+        const result = await window.api.resetPassword({ token: code, new_password: newPassword });
+        if (result.success) {
+          showSnack(t('Senha redefinida com sucesso!'));
+          hideAllForms();
+          formLogin.classList.remove('hidden');
+        } else {
+          let msg = t('Erro de Conexão');
+          if (result.error === 'INVALID_OR_EXPIRED_CODE') msg = t('Codigo invalido ou expirado!');
+          showSnack(msg, true);
+        }
+      } catch (e) {
+        showSnack(t('Erro de Conexão'), true);
+      }
+
+      btnResetPassword.disabled = false;
+      btnResetPassword.style.opacity = '1';
+    });
+  }
+}
+
+function showMainScreen() {
+  document.getElementById('activation-screen').classList.add('hidden');
+  document.getElementById('main-screen').classList.remove('hidden');
+  updateDbStatus();
+  setupNavigation();
+  setupLanguage();
+  startClock();
+  setActiveNav(0);
+  showScreen(0);
+}
+
+// ========================================
+// Window Controls
+// ========================================
+function setupWindowControls() {
+  document.getElementById('btn-minimize')?.addEventListener('click', () => window.api.windowMinimize());
+  document.getElementById('btn-maximize')?.addEventListener('click', () => window.api.windowMaximize());
+  document.getElementById('btn-close')?.addEventListener('click', () => window.api.windowClose());
+}
+
+// ========================================
+// Init
+// ========================================
+document.addEventListener('DOMContentLoaded', () => {
+  setupWindowControls();
+  setupActivation();
+  // Always show login screen - user must authenticate to get JWT + encryption key
+});
