@@ -31,7 +31,34 @@ cd medical-safe-gold
 npm install
 ```
 
+## Configuracao
+
+O app se conecta ao backend atraves da URL definida no arquivo `config.json` na raiz do projeto:
+
+```json
+{
+  "api_url": "http://localhost:8000"
+}
+```
+
+**Para apontar para um servidor remoto (producao):**
+
+```json
+{
+  "api_url": "https://seu-servidor.com"
+}
+```
+
+O app procura o `config.json` em duas localizacoes (nesta ordem):
+1. Na pasta do projeto (ao lado do `main.js`)
+2. Na pasta de dados do usuario (`%APPDATA%/medical-safe-gold/` no Windows)
+
+Se nenhum `config.json` for encontrado, o app usa `http://localhost:8000` como padrao.
+
 ## Como rodar (modo desenvolvimento)
+
+1. Primeiro, inicie o backend (ver secao Backend abaixo)
+2. Depois, inicie o app:
 
 ```bash
 npm start
@@ -60,6 +87,7 @@ Os arquivos gerados ficam na pasta `dist/`.
 medical-safe-gold/
 ├── main.js                  # Processo principal do Electron (IPC, API, criptografia)
 ├── preload.js               # Bridge segura entre main e renderer
+├── config.json              # Configuracao da URL do backend
 ├── package.json             # Dependencias e scripts
 ├── assets/                  # Icones e imagens de fundo
 │   ├── icon.ico
@@ -115,7 +143,7 @@ O backend usa:
 
 - Dados dos pacientes sao criptografados antes de sair do app
 - Cada usuario tem sua propria chave de criptografia
-- Comunicacao via HTTPS com autenticacao dupla (Basic Auth + JWT)
+- Comunicacao via HTTPS com autenticacao JWT
 - Identificacao por machine ID para vincular licenca ao dispositivo
 - Nenhum dado sensivel e armazenado em texto puro
 

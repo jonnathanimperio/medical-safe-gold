@@ -2,13 +2,12 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const crypto = require('crypto');
 const os = require('os');
+const fs = require('fs');
 const fernet = require('fernet');
 
 // --- Backend API Configuration ---
-const CONFIG_URL = 'https://arquivo-codigo-installer-rmcsa9h2.devinapps.com/config.json';
-let TUNNEL_USER = 'user';
-let TUNNEL_PASS = '4ee5d28b63031015eb9bc35c589289c3';
-let API_URL = 'https://arquivo-interface-app-tunnel-3ufwemiu.devinapps.com';
+// Default API URL - override via config.json in the app root directory
+let API_URL = 'http://localhost:8000';
 
 let mainWindow;
 let jwtToken = null;
@@ -16,26 +15,25 @@ let userFernetKey = null;
 let userFernetSecret = null;
 let apiConnected = false;
 
-// Fetch latest backend URL from remote config (with retry)
-async function loadRemoteConfig() {
-  for (let attempt = 0; attempt < 3; attempt++) {
+// Load backend URL from local config.json
+function loadConfig() {
+  const configPaths = [
+    path.join(__dirname, 'config.json'),
+    path.join(app.getPath('userData'), 'config.json'),
+  ];
+  for (const configPath of configPaths) {
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
-      const response = await fetch(CONFIG_URL, { signal: controller.signal });
-      clearTimeout(timeout);
-      const config = await response.json();
-      if (config.api_url) API_URL = config.api_url;
-      if (config.tunnel_user) TUNNEL_USER = config.tunnel_user;
-      if (config.tunnel_pass) TUNNEL_PASS = config.tunnel_pass;
-      console.log('[CONFIG] Loaded remote config, API_URL:', API_URL);
-      return;
+      if (fs.existsSync(configPath)) {
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        if (config.api_url) API_URL = config.api_url;
+        console.log('[CONFIG] Loaded config from', configPath, '- API_URL:', API_URL);
+        return;
+      }
     } catch (e) {
-      console.error(`[CONFIG] Attempt ${attempt + 1} failed:`, e.message);
-      if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
+      console.error('[CONFIG] Error reading', configPath, ':', e.message);
     }
   }
-  console.log('[CONFIG] Using default/fallback URL:', API_URL);
+  console.log('[CONFIG] No config.json found, using default API_URL:', API_URL);
 }
 
 // --- Encryption using per-user Fernet key ---
@@ -59,14 +57,12 @@ function decryptData(tokenStr) {
 // --- HTTP Helper ---
 async function apiCall(endpoint, options = {}) {
   const url = `${API_URL}${endpoint}`;
-  const basicAuth = Buffer.from(`${TUNNEL_USER}:${TUNNEL_PASS}`).toString('base64');
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `Basic ${basicAuth}`,
     ...options.headers,
   };
   if (jwtToken) {
-    headers['X-Authorization'] = `Bearer ${jwtToken}`;
+    headers['Authorization'] = `Bearer ${jwtToken}`;
   }
   try {
     const response = await fetch(url, { ...options, headers });
@@ -113,7 +109,7 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
-  await loadRemoteConfig();
+  loadConfig();
   await checkApiHealth();
   createWindow();
 });
