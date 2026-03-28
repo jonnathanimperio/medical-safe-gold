@@ -48,8 +48,10 @@ function startClock() {
   function update() {
     const now = new Date();
     const time = now.toLocaleTimeString('pt-BR', { hour12: false });
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
     const el = document.getElementById('clock-time');
-    if (el) el.textContent = time;
+    if (el) el.textContent = `${day}/${month} - ${time}`;
   }
   update();
   setInterval(update, 1000);
