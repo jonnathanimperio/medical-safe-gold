@@ -64,23 +64,35 @@ async function apiCall(endpoint, options = {}) {
   if (jwtToken) {
     headers['Authorization'] = `Bearer ${jwtToken}`;
   }
-  try {
-    const response = await fetch(url, { ...options, headers });
-    return await response.json();
-  } catch (e) {
-    console.error(`API call failed: ${endpoint}`, e);
-    throw e;
+  const maxRetries = 3;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
+      const response = await fetch(url, { ...options, headers, signal: controller.signal });
+      clearTimeout(timeout);
+      return await response.json();
+    } catch (e) {
+      console.error(`API call failed (attempt ${attempt}/${maxRetries}): ${endpoint}`, e.message);
+      if (attempt === maxRetries) throw e;
+      await new Promise(r => setTimeout(r, 2000 * attempt));
+    }
   }
 }
 
-// Check API connectivity
+// Check API connectivity with retries for cold starts
 async function checkApiHealth() {
-  try {
-    const data = await apiCall('/health');
-    apiConnected = data.status === 'ok';
-  } catch (e) {
-    apiConnected = false;
+  for (let i = 0; i < 5; i++) {
+    try {
+      const data = await apiCall('/health');
+      apiConnected = data.status === 'ok';
+      if (apiConnected) return;
+    } catch (e) {
+      console.log(`[HEALTH] Attempt ${i + 1}/5 failed, retrying...`);
+    }
+    await new Promise(r => setTimeout(r, 3000));
   }
+  apiConnected = false;
 }
 
 function createWindow() {
