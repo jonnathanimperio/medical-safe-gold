@@ -656,7 +656,9 @@ function confirmLogout() {
   localStorage.removeItem('clinica_id');
   localStorage.removeItem('user_email');
   localStorage.removeItem('crm_medico');
+  localStorage.removeItem('user_role');
   clinicaId = null;
+  userRole = 'doctor';
 
   const content = document.getElementById('content-area');
   content.innerHTML = `

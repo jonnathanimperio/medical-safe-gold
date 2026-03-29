@@ -164,12 +164,12 @@ ipcMain.handle('get-machine-id', () => getMachineId());
 
 // --- User Authentication via API ---
 
-ipcMain.handle('register-user', async (event, { email, password, licenseKey }) => {
+ipcMain.handle('register-user', async (event, { email, password, licenseKey, role }) => {
   try {
     const machineId = getMachineId();
     const result = await apiCall('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, machine_id: machineId, license_key: licenseKey }),
+      body: JSON.stringify({ email, password, machine_id: machineId, license_key: licenseKey, role: role || 'doctor' }),
     });
 
     if (result.success) {
@@ -179,6 +179,7 @@ ipcMain.handle('register-user', async (event, { email, password, licenseKey }) =
       return {
         success: true,
         clinicaId: result.clinica_id,
+        role: result.role || role || 'doctor',
         subscriptionStatus: result.subscription_status,
         subscriptionExpires: result.subscription_expires,
       };
@@ -214,6 +215,7 @@ ipcMain.handle('login-user', async (event, { email, password }) => {
       return {
         success: true,
         clinicaId: result.clinica_id,
+        role: result.role || 'doctor',
         subscriptionStatus: result.subscription_status,
         subscriptionPlan: result.subscription_plan,
         subscriptionExpires: result.subscription_expires,
@@ -374,7 +376,7 @@ ipcMain.handle('upload-anexo', async (event, { prontuarioId, fileData, fileName,
     body += `Content-Disposition: form-data; name="descricao"\r\n\r\n`;
     body += `${descricao || ''}\r\n`;
     body += `--${boundary}\r\n`;
-    body += `Content-Disposition: form-data; name="file"; filename="${fileName}"\r\n`;
+    body += `Content-Disposition: form-data; name="file"; filename="${fileName.replace(/["\r\n]/g, '_')}"\r\n`;
     body += `Content-Type: ${contentType || 'application/octet-stream'}\r\n\r\n`;
     
     const headerBuffer = Buffer.from(body, 'utf-8');
@@ -421,7 +423,11 @@ ipcMain.handle('get-anexo', async (event, { anexoId }) => {
     const timeout = setTimeout(() => controller.abort(), 30000);
     const response = await fetch(url, { headers, signal: controller.signal });
     clearTimeout(timeout);
-    
+
+    if (!response.ok) {
+      return { success: false, error: `HTTP ${response.status}` };
+    }
+
     const contentType = response.headers.get('content-type') || 'application/octet-stream';
     const disposition = response.headers.get('content-disposition') || '';
     const fileNameMatch = disposition.match(/filename="?([^"]+)"?/);
