@@ -128,6 +128,13 @@
             <input type="password" id="register-password-confirm" class="activation-input" data-t-placeholder="CONFIRMAR SENHA" placeholder="CONFIRMAR SENHA">
             <button type="button" class="toggle-password" data-target="register-password-confirm"><span class="material-icons-round">visibility_off</span></button>
           </div>
+          <div class="activation-input-group role-selector-group">
+            <div class="icon-3d icon-3d-sm icon-3d-dark" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);z-index:2;"><span class="material-icons-round">badge</span></div>
+            <select id="register-role" class="activation-input activation-select">
+              <option value="doctor" data-t="Medico">Medico</option>
+              <option value="receptionist" data-t="Recepcionista">Recepcionista</option>
+            </select>
+          </div>
           <button class="btn-primary btn-activate" id="btn-register">
             <div class="icon-3d icon-3d-sm icon-3d-gold" style="pointer-events:none;"><span class="material-icons-round">person_add</span></div>
             <span data-t="CRIAR CONTA">CRIAR CONTA</span>
@@ -178,6 +185,11 @@
         <button class="nav-item" data-index="4">
           <div class="icon-3d icon-3d-dark"><span class="material-icons-round">notifications</span></div>
           <span class="nav-label" data-t="ALERTAS">ALERTAS</span>
+          <div class="nav-indicator"></div>
+        </button>
+        <button class="nav-item hidden" data-index="6" id="nav-prontuario">
+          <div class="icon-3d icon-3d-dark"><span class="material-icons-round">description</span></div>
+          <span class="nav-label" data-t="PRONTUARIO">PRONTUARIO</span>
           <div class="nav-indicator"></div>
         </button>
       </div>
