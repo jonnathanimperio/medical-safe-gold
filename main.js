@@ -317,11 +317,14 @@ ipcMain.handle('reset-password', async (event, { token, new_password }) => {
 // --- Prontuario via API ---
 
 ipcMain.handle('save-prontuario', async (event, data) => {
-  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED' };
+  if (!jwtToken || !userFernetSecret) return { success: false, error: 'NOT_AUTHENTICATED' };
   try {
+    // Encrypt sensitive medical fields before sending
+    const sensitiveFields = { sintomas: data.sintomas, diagnostico: data.diagnostico, tratamento: data.tratamento, observacoes: data.observacoes || '' };
+    const encryptedPayload = encryptData(sensitiveFields);
     const result = await apiCall('/prontuarios', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...data, sintomas: encryptedPayload, diagnostico: '', tratamento: '', observacoes: '', encrypted: true }),
     });
     return result;
   } catch (e) {
@@ -333,6 +336,24 @@ ipcMain.handle('get-prontuarios', async (event, { patientId }) => {
   if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED', data: [] };
   try {
     const result = await apiCall(`/prontuarios/${encodeURIComponent(patientId)}`);
+    if (result.success && result.data && userFernetSecret) {
+      // Decrypt sensitive fields for each prontuario
+      for (const doc of result.data) {
+        if (doc.encrypted && doc.sintomas) {
+          try {
+            const decrypted = decryptData(doc.sintomas);
+            if (decrypted) {
+              doc.sintomas = decrypted.sintomas || '';
+              doc.diagnostico = decrypted.diagnostico || '';
+              doc.tratamento = decrypted.tratamento || '';
+              doc.observacoes = decrypted.observacoes || '';
+            }
+          } catch (decErr) {
+            console.error('[PRONTUARIO] Decryption failed for doc:', doc.id, decErr.message);
+          }
+        }
+      }
+    }
     return result;
   } catch (e) {
     return { success: false, error: e.message, data: [] };
@@ -340,11 +361,14 @@ ipcMain.handle('get-prontuarios', async (event, { patientId }) => {
 });
 
 ipcMain.handle('update-prontuario', async (event, { id, data }) => {
-  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED' };
+  if (!jwtToken || !userFernetSecret) return { success: false, error: 'NOT_AUTHENTICATED' };
   try {
+    // Encrypt sensitive medical fields before sending
+    const sensitiveFields = { sintomas: data.sintomas, diagnostico: data.diagnostico, tratamento: data.tratamento, observacoes: data.observacoes || '' };
+    const encryptedPayload = encryptData(sensitiveFields);
     const result = await apiCall(`/prontuarios/${encodeURIComponent(id)}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: JSON.stringify({ sintomas: encryptedPayload, diagnostico: '', tratamento: '', observacoes: '', encrypted: true }),
     });
     return result;
   } catch (e) {

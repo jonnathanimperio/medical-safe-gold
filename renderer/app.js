@@ -8,6 +8,12 @@ let currentScreen = 0;
 let allAppointments = [];
 let userRole = 'doctor'; // 'doctor' or 'receptionist'
 
+// --- HTML Escaping (XSS prevention) ---
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
 // --- Translation ---
 function t(key) {
   if (!key) return '';
@@ -1045,11 +1051,11 @@ function showProntuarioMain(container) {
       <div class="prontuario-search-bar">
         <input type="text" class="prontuario-search-input" id="prontuario-patient-search" 
           placeholder="${t('Nome do paciente ou CPF')}" />
-        <button class="btn-prontuario" onclick="searchProntuarioPatient()">
+        <button class="btn-prontuario" id="btn-search-prontuario">
           <span class="material-icons-round">search</span>
           ${t('BUSCAR')}
         </button>
-        <button class="btn-prontuario btn-secondary" onclick="showProntuarioForm()">
+        <button class="btn-prontuario btn-secondary" id="btn-new-prontuario-main">
           <span class="material-icons-round">add_circle</span>
           ${t('NOVO PRONTUARIO')}
         </button>
@@ -1065,6 +1071,8 @@ function showProntuarioMain(container) {
     });
     searchInput.focus();
   }
+  document.getElementById('btn-search-prontuario').addEventListener('click', () => searchProntuarioPatient());
+  document.getElementById('btn-new-prontuario-main').addEventListener('click', () => showProntuarioForm());
 }
 
 async function searchProntuarioPatient() {
@@ -1107,19 +1115,23 @@ async function searchProntuarioPatient() {
           card.className = 'prontuario-card';
           card.innerHTML = `
             <div class="prontuario-card-header">
-              <div><strong style="color:var(--text-primary);">${p.nome || ''}</strong></div>
+              <div><strong style="color:var(--text-primary);">${escapeHtml(p.nome)}</strong></div>
               <div class="prontuario-card-badge">${t('SEM PRONTUARIO')}</div>
             </div>
             <div class="prontuario-card-field">
               <span class="prontuario-card-label">CPF:</span>
-              <span class="prontuario-card-value">${p.cpf || '-'}</span>
+              <span class="prontuario-card-value">${escapeHtml(p.cpf) || '-'}</span>
             </div>
             <div class="prontuario-card-actions">
-              <button class="btn-prontuario btn-sm" onclick="showProntuarioForm('${(p.cpf || '').replace(/'/g, '')}', '${(p.nome || '').replace(/'/g, '')}')">
+              <button class="btn-prontuario btn-sm" data-cpf="${escapeHtml(p.cpf)}" data-nome="${escapeHtml(p.nome)}">
                 <span class="material-icons-round">add</span> ${t('CRIAR PRONTUARIO')}
               </button>
             </div>
           `;
+          const addBtn = card.querySelector('[data-cpf]');
+          if (addBtn) {
+            addBtn.addEventListener('click', () => showProntuarioForm(addBtn.dataset.cpf, addBtn.dataset.nome));
+          }
           resultsDiv.appendChild(card);
         });
       } else {
@@ -1143,19 +1155,22 @@ function renderProntuarioList(container, prontuarios, patientId) {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
       <div style="color:var(--text-primary);font-size:15px;font-weight:600;">
         <span class="material-icons-round" style="vertical-align:middle;color:var(--gold);margin-right:6px;">person</span>
-        ${patientName}
+        ${escapeHtml(patientName)}
         <span style="color:var(--text-muted);font-size:12px;margin-left:8px;">${prontuarios.length} ${t('prontuario(s)')}</span>
       </div>
       <div style="display:flex;gap:8px;">
-        <button class="btn-prontuario btn-sm btn-secondary" onclick="printProntuarios('${patientId.replace(/'/g, '')}')">
+        <button class="btn-prontuario btn-sm btn-secondary" id="btn-print-prontuarios">
           <span class="material-icons-round">print</span> ${t('IMPRIMIR')}
         </button>
-        <button class="btn-prontuario btn-sm" onclick="showProntuarioForm('${patientId.replace(/'/g, '')}', '${(patientName || '').replace(/'/g, '')}')">
+        <button class="btn-prontuario btn-sm" id="btn-new-prontuario">
           <span class="material-icons-round">add</span> ${t('NOVO')}
         </button>
       </div>
     </div>
   `;
+
+  document.getElementById('btn-print-prontuarios').addEventListener('click', () => printProntuarios(patientId));
+  document.getElementById('btn-new-prontuario').addEventListener('click', () => showProntuarioForm(patientId, patientName));
 
   prontuarios.forEach(p => {
     const date = p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '-';
@@ -1169,29 +1184,32 @@ function renderProntuarioList(container, prontuarios, patientId) {
       </div>
       <div class="prontuario-card-field">
         <div class="prontuario-card-label">${t('SINTOMAS')}</div>
-        <div class="prontuario-card-value">${p.sintomas || '-'}</div>
+        <div class="prontuario-card-value">${escapeHtml(p.sintomas) || '-'}</div>
       </div>
       <div class="prontuario-card-field">
         <div class="prontuario-card-label">${t('DIAGNOSTICO')}</div>
-        <div class="prontuario-card-value">${p.diagnostico || '-'}</div>
+        <div class="prontuario-card-value">${escapeHtml(p.diagnostico) || '-'}</div>
       </div>
       <div class="prontuario-card-field">
         <div class="prontuario-card-label">${t('TRATAMENTO')}</div>
-        <div class="prontuario-card-value">${p.tratamento || '-'}</div>
+        <div class="prontuario-card-value">${escapeHtml(p.tratamento) || '-'}</div>
       </div>
-      ${p.observacoes ? `<div class="prontuario-card-field"><div class="prontuario-card-label">${t('OBSERVACOES')}</div><div class="prontuario-card-value">${p.observacoes}</div></div>` : ''}
+      ${p.observacoes ? `<div class="prontuario-card-field"><div class="prontuario-card-label">${t('OBSERVACOES')}</div><div class="prontuario-card-value">${escapeHtml(p.observacoes)}</div></div>` : ''}
       <div class="prontuario-card-actions">
-        <button class="btn-prontuario btn-sm btn-secondary" onclick="editProntuario('${p.id}', '${patientId.replace(/'/g, '')}')">
+        <button class="btn-prontuario btn-sm btn-secondary btn-edit-pront" data-id="${escapeHtml(p.id)}">
           <span class="material-icons-round">edit</span> ${t('EDITAR')}
         </button>
-        <button class="btn-prontuario btn-sm btn-secondary" onclick="viewAnexos('${p.id}')">
+        <button class="btn-prontuario btn-sm btn-secondary btn-anexos-pront" data-id="${escapeHtml(p.id)}">
           <span class="material-icons-round">attach_file</span> ${t('ANEXOS')}
         </button>
-        <button class="btn-prontuario btn-sm btn-danger" onclick="deleteProntuarioConfirm('${p.id}', '${patientId.replace(/'/g, '')}')">
+        <button class="btn-prontuario btn-sm btn-danger btn-delete-pront" data-id="${escapeHtml(p.id)}">
           <span class="material-icons-round">delete</span>
         </button>
       </div>
     `;
+    card.querySelector('.btn-edit-pront').addEventListener('click', () => editProntuario(p.id, patientId));
+    card.querySelector('.btn-anexos-pront').addEventListener('click', () => viewAnexos(p.id));
+    card.querySelector('.btn-delete-pront').addEventListener('click', () => deleteProntuarioConfirm(p.id, patientId));
     container.appendChild(card);
   });
 }
@@ -1206,7 +1224,7 @@ function showProntuarioForm(patientId, patientName, editData) {
           <span class="material-icons-round">${isEdit ? 'edit_note' : 'note_add'}</span>
           ${isEdit ? t('EDITAR PRONTUARIO') : t('NOVO PRONTUARIO')}
         </div>
-        <button class="btn-prontuario btn-secondary btn-sm" onclick="showScreen(6)">
+        <button class="btn-prontuario btn-secondary btn-sm" id="btn-back-form">
           <span class="material-icons-round">arrow_back</span> ${t('VOLTAR')}
         </button>
       </div>
@@ -1214,35 +1232,35 @@ function showProntuarioForm(patientId, patientName, editData) {
         <div class="prontuario-form-row">
           <div class="prontuario-form-group">
             <label class="prontuario-form-label">${t('PACIENTE (CPF OU ID)')}</label>
-            <input type="text" class="prontuario-form-input" id="pront-patient-id" value="${patientId || ''}" placeholder="CPF" />
+            <input type="text" class="prontuario-form-input" id="pront-patient-id" value="${escapeHtml(patientId)}" placeholder="CPF" />
           </div>
           <div class="prontuario-form-group">
             <label class="prontuario-form-label">${t('NOME DO PACIENTE')}</label>
-            <input type="text" class="prontuario-form-input" id="pront-patient-name" value="${patientName || ''}" placeholder="${t('Nome do Paciente')}" />
+            <input type="text" class="prontuario-form-input" id="pront-patient-name" value="${escapeHtml(patientName)}" placeholder="${t('Nome do Paciente')}" />
           </div>
         </div>
         <div class="prontuario-form-group">
           <label class="prontuario-form-label">${t('SINTOMAS')}</label>
-          <textarea class="prontuario-form-textarea" id="pront-sintomas" placeholder="${t('Descreva os sintomas do paciente')}">${editData?.sintomas || ''}</textarea>
+          <textarea class="prontuario-form-textarea" id="pront-sintomas" placeholder="${t('Descreva os sintomas do paciente')}">${escapeHtml(editData?.sintomas)}</textarea>
         </div>
         <div class="prontuario-form-group">
           <label class="prontuario-form-label">${t('DIAGNOSTICO')}</label>
-          <textarea class="prontuario-form-textarea" id="pront-diagnostico" placeholder="${t('Diagnostico medico')}">${editData?.diagnostico || ''}</textarea>
+          <textarea class="prontuario-form-textarea" id="pront-diagnostico" placeholder="${t('Diagnostico medico')}">${escapeHtml(editData?.diagnostico)}</textarea>
         </div>
         <div class="prontuario-form-group">
           <label class="prontuario-form-label">${t('TRATAMENTO')}</label>
-          <textarea class="prontuario-form-textarea" id="pront-tratamento" placeholder="${t('Plano de tratamento prescrito')}">${editData?.tratamento || ''}</textarea>
+          <textarea class="prontuario-form-textarea" id="pront-tratamento" placeholder="${t('Plano de tratamento prescrito')}">${escapeHtml(editData?.tratamento)}</textarea>
         </div>
         <div class="prontuario-form-group">
           <label class="prontuario-form-label">${t('OBSERVACOES')} (${t('OPCIONAL')})</label>
-          <textarea class="prontuario-form-textarea" id="pront-observacoes" placeholder="${t('Observacoes adicionais')}">${editData?.observacoes || ''}</textarea>
+          <textarea class="prontuario-form-textarea" id="pront-observacoes" placeholder="${t('Observacoes adicionais')}">${escapeHtml(editData?.observacoes)}</textarea>
         </div>
         <div class="prontuario-form-actions">
-          <button class="btn-prontuario" onclick="${isEdit ? `saveProntuarioEdit('${editData.id}', '${(patientId || '').replace(/'/g, '')}')` : 'saveProntuarioNew()'}">
+          <button class="btn-prontuario" id="btn-save-prontuario">
             <span class="material-icons-round">save</span>
             ${isEdit ? t('SALVAR ALTERACOES') : t('SALVAR PRONTUARIO')}
           </button>
-          <button class="btn-prontuario btn-secondary" onclick="showScreen(6)">
+          <button class="btn-prontuario btn-secondary" id="btn-cancel-prontuario">
             <span class="material-icons-round">cancel</span>
             ${t('CANCELAR')}
           </button>
@@ -1250,6 +1268,12 @@ function showProntuarioForm(patientId, patientName, editData) {
       </div>
     </div>
   `;
+  document.getElementById('btn-back-form').addEventListener('click', () => showScreen(6));
+  document.getElementById('btn-save-prontuario').addEventListener('click', () => {
+    if (isEdit) saveProntuarioEdit(editData.id, patientId);
+    else saveProntuarioNew();
+  });
+  document.getElementById('btn-cancel-prontuario').addEventListener('click', () => showScreen(6));
 }
 
 async function saveProntuarioNew() {
@@ -1342,15 +1366,17 @@ async function deleteProntuarioConfirm(prontuarioId, patientId) {
       <h2 style="color:var(--text-primary);margin-bottom:12px;">${t('EXCLUIR PRONTUARIO?')}</h2>
       <p style="color:var(--text-secondary);margin-bottom:24px;font-size:13px;">${t('Esta acao nao pode ser desfeita. O prontuario e todos os anexos serao removidos permanentemente.')}</p>
       <div style="display:flex;gap:12px;justify-content:center;">
-        <button class="btn-prontuario btn-danger" onclick="deleteProntuarioExecute('${prontuarioId}', '${patientId}')">
+        <button class="btn-prontuario btn-danger" id="btn-confirm-delete">
           <span class="material-icons-round">delete_forever</span> ${t('SIM, EXCLUIR')}
         </button>
-        <button class="btn-prontuario btn-secondary" onclick="showScreen(6)">
+        <button class="btn-prontuario btn-secondary" id="btn-cancel-delete">
           <span class="material-icons-round">cancel</span> ${t('CANCELAR')}
         </button>
       </div>
     </div>
   `;
+  document.getElementById('btn-confirm-delete').addEventListener('click', () => deleteProntuarioExecute(prontuarioId, patientId));
+  document.getElementById('btn-cancel-delete').addEventListener('click', () => showScreen(6));
 }
 
 async function deleteProntuarioExecute(prontuarioId, patientId) {
@@ -1385,11 +1411,11 @@ async function viewAnexos(prontuarioId) {
             <span class="material-icons-round">attach_file</span>
             ${t('ANEXOS DO PRONTUARIO')}
           </div>
-          <button class="btn-prontuario btn-secondary btn-sm" onclick="showScreen(6)">
+          <button class="btn-prontuario btn-secondary btn-sm" id="btn-back-anexos">
             <span class="material-icons-round">arrow_back</span> ${t('VOLTAR')}
           </button>
         </div>
-        <div class="file-upload-area" id="upload-area" onclick="document.getElementById('file-input').click()">
+        <div class="file-upload-area" id="upload-area">
           <span class="material-icons-round">cloud_upload</span>
           <div class="file-upload-text">${t('Clique para enviar exame ou documento (max 10MB)')}</div>
           <input type="file" id="file-input" class="file-upload-input" accept="image/*,.pdf,.doc,.docx,.txt" />
@@ -1397,6 +1423,10 @@ async function viewAnexos(prontuarioId) {
         <div class="anexo-list" id="anexo-list"></div>
       </div>
     `;
+
+    // Add event listeners for back and upload area buttons
+    document.getElementById('btn-back-anexos').addEventListener('click', () => showScreen(6));
+    document.getElementById('upload-area').addEventListener('click', () => document.getElementById('file-input').click());
 
     // Render existing anexos
     const anexoList = document.getElementById('anexo-list');
@@ -1409,16 +1439,18 @@ async function viewAnexos(prontuarioId) {
         item.className = 'anexo-item';
         item.innerHTML = `
           <span class="material-icons-round">${a.content_type?.startsWith('image') ? 'image' : 'insert_drive_file'}</span>
-          <span class="anexo-item-name">${a.filename}</span>
+          <span class="anexo-item-name">${escapeHtml(a.filename)}</span>
           <span class="anexo-item-size">${sizeStr}</span>
-          ${a.descricao ? `<span style="color:var(--text-muted);font-size:11px;">${a.descricao}</span>` : ''}
-          <button class="btn-prontuario btn-sm btn-secondary" style="height:28px;padding:0 10px;" onclick="downloadAnexo('${a.id}')">
+          ${a.descricao ? `<span style="color:var(--text-muted);font-size:11px;">${escapeHtml(a.descricao)}</span>` : ''}
+          <button class="btn-prontuario btn-sm btn-secondary btn-download-anexo" style="height:28px;padding:0 10px;">
             <span class="material-icons-round" style="font-size:14px;">download</span>
           </button>
-          <button class="btn-prontuario btn-sm btn-danger" style="height:28px;padding:0 10px;" onclick="deleteAnexoConfirm('${a.id}', '${prontuarioId}')">
+          <button class="btn-prontuario btn-sm btn-danger btn-delete-anexo" style="height:28px;padding:0 10px;">
             <span class="material-icons-round" style="font-size:14px;">delete</span>
           </button>
         `;
+        item.querySelector('.btn-download-anexo').addEventListener('click', () => downloadAnexo(a.id));
+        item.querySelector('.btn-delete-anexo').addEventListener('click', () => deleteAnexoConfirm(a.id, prontuarioId));
         anexoList.appendChild(item);
       });
     }
@@ -1514,7 +1546,7 @@ async function printProntuarios(patientId) {
     let html = `
       <!DOCTYPE html>
       <html><head><meta charset="UTF-8">
-      <title>${t('PRONTUARIO')} - ${patientName}</title>
+      <title>${t('PRONTUARIO')} - ${escapeHtml(patientName)}</title>
       <style>
         body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
         .header { text-align: center; border-bottom: 3px solid #d4af37; padding-bottom: 16px; margin-bottom: 24px; }
@@ -1537,9 +1569,9 @@ async function printProntuarios(patientId) {
         <p>${t('PRONTUARIO ELETRONICO')}</p>
       </div>
       <div class="patient-info">
-        <h2>${patientName}</h2>
-        <p><strong>CPF/ID:</strong> ${patientId}</p>
-        <p><strong>${t('MEDICO')}:</strong> ${userEmail}</p>
+        <h2>${escapeHtml(patientName)}</h2>
+        <p><strong>CPF/ID:</strong> ${escapeHtml(patientId)}</p>
+        <p><strong>${t('MEDICO')}:</strong> ${escapeHtml(userEmail)}</p>
         <p><strong>${t('DATA DE IMPRESSAO')}:</strong> ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}</p>
       </div>
     `;
@@ -1550,17 +1582,17 @@ async function printProntuarios(patientId) {
       html += `
         <div class="record">
           <div class="record-date">#${i + 1} - ${date} ${time}</div>
-          <div class="field"><div class="field-label">${t('SINTOMAS')}</div><div class="field-value">${p.sintomas || '-'}</div></div>
-          <div class="field"><div class="field-label">${t('DIAGNOSTICO')}</div><div class="field-value">${p.diagnostico || '-'}</div></div>
-          <div class="field"><div class="field-label">${t('TRATAMENTO')}</div><div class="field-value">${p.tratamento || '-'}</div></div>
-          ${p.observacoes ? `<div class="field"><div class="field-label">${t('OBSERVACOES')}</div><div class="field-value">${p.observacoes}</div></div>` : ''}
+          <div class="field"><div class="field-label">${t('SINTOMAS')}</div><div class="field-value">${escapeHtml(p.sintomas) || '-'}</div></div>
+          <div class="field"><div class="field-label">${t('DIAGNOSTICO')}</div><div class="field-value">${escapeHtml(p.diagnostico) || '-'}</div></div>
+          <div class="field"><div class="field-label">${t('TRATAMENTO')}</div><div class="field-value">${escapeHtml(p.tratamento) || '-'}</div></div>
+          ${p.observacoes ? `<div class="field"><div class="field-label">${t('OBSERVACOES')}</div><div class="field-value">${escapeHtml(p.observacoes)}</div></div>` : ''}
         </div>
       `;
     });
 
     html += `
       <div class="signature">
-        <div class="signature-line">${userEmail}<br><small>${t('MEDICO RESPONSAVEL')}</small></div>
+        <div class="signature-line">${escapeHtml(userEmail)}<br><small>${t('MEDICO RESPONSAVEL')}</small></div>
       </div>
       <div class="footer">
         <small>${t('DOCUMENTO GERADO POR MEDICAL SAFE GOLD')} - ${t('PROTEGIDO POR LGPD')}</small>
