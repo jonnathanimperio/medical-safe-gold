@@ -164,12 +164,12 @@ ipcMain.handle('get-machine-id', () => getMachineId());
 
 // --- User Authentication via API ---
 
-ipcMain.handle('register-user', async (event, { email, password, licenseKey }) => {
+ipcMain.handle('register-user', async (event, { email, password, licenseKey, role }) => {
   try {
     const machineId = getMachineId();
     const result = await apiCall('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, machine_id: machineId, license_key: licenseKey }),
+      body: JSON.stringify({ email, password, machine_id: machineId, license_key: licenseKey, role: role || 'doctor' }),
     });
 
     if (result.success) {
@@ -179,6 +179,7 @@ ipcMain.handle('register-user', async (event, { email, password, licenseKey }) =
       return {
         success: true,
         clinicaId: result.clinica_id,
+        role: result.role || role || 'doctor',
         subscriptionStatus: result.subscription_status,
         subscriptionExpires: result.subscription_expires,
       };
@@ -214,6 +215,7 @@ ipcMain.handle('login-user', async (event, { email, password }) => {
       return {
         success: true,
         clinicaId: result.clinica_id,
+        role: result.role || 'doctor',
         subscriptionStatus: result.subscription_status,
         subscriptionPlan: result.subscription_plan,
         subscriptionExpires: result.subscription_expires,
@@ -309,6 +311,173 @@ ipcMain.handle('reset-password', async (event, { token, new_password }) => {
     return result;
   } catch (e) {
     return { success: false, error: 'API_ERROR' };
+  }
+});
+
+// --- Prontuario via API ---
+
+ipcMain.handle('save-prontuario', async (event, data) => {
+  if (!jwtToken || !userFernetSecret) return { success: false, error: 'NOT_AUTHENTICATED' };
+  try {
+    // Encrypt sensitive medical fields before sending
+    const sensitiveFields = { sintomas: data.sintomas, diagnostico: data.diagnostico, tratamento: data.tratamento, observacoes: data.observacoes || '' };
+    const encryptedPayload = encryptData(sensitiveFields);
+    const result = await apiCall('/prontuarios', {
+      method: 'POST',
+      body: JSON.stringify({ ...data, sintomas: encryptedPayload, diagnostico: '', tratamento: '', observacoes: '', encrypted: true }),
+    });
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('get-prontuarios', async (event, { patientId }) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED', data: [] };
+  try {
+    const result = await apiCall(`/prontuarios/${encodeURIComponent(patientId)}`);
+    if (result.success && result.data && userFernetSecret) {
+      // Decrypt sensitive fields for each prontuario
+      for (const doc of result.data) {
+        if (doc.encrypted && doc.sintomas) {
+          try {
+            const decrypted = decryptData(doc.sintomas);
+            if (decrypted) {
+              doc.sintomas = decrypted.sintomas || '';
+              doc.diagnostico = decrypted.diagnostico || '';
+              doc.tratamento = decrypted.tratamento || '';
+              doc.observacoes = decrypted.observacoes || '';
+            }
+          } catch (decErr) {
+            console.error('[PRONTUARIO] Decryption failed for doc:', doc.id, decErr.message);
+          }
+        }
+      }
+    }
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message, data: [] };
+  }
+});
+
+ipcMain.handle('update-prontuario', async (event, { id, data }) => {
+  if (!jwtToken || !userFernetSecret) return { success: false, error: 'NOT_AUTHENTICATED' };
+  try {
+    // Encrypt sensitive medical fields before sending
+    const sensitiveFields = { sintomas: data.sintomas, diagnostico: data.diagnostico, tratamento: data.tratamento, observacoes: data.observacoes || '' };
+    const encryptedPayload = encryptData(sensitiveFields);
+    const result = await apiCall(`/prontuarios/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ sintomas: encryptedPayload, diagnostico: '', tratamento: '', observacoes: '', encrypted: true }),
+    });
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('delete-prontuario', async (event, { id }) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED' };
+  try {
+    const result = await apiCall(`/prontuarios/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('upload-anexo', async (event, { prontuarioId, fileData, fileName, contentType, descricao }) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED' };
+  try {
+    // Build multipart form data manually
+    const boundary = '----FormBoundary' + Date.now().toString(36);
+    const fileBuffer = Buffer.from(fileData, 'base64');
+    
+    let body = '';
+    body += `--${boundary}\r\n`;
+    body += `Content-Disposition: form-data; name="descricao"\r\n\r\n`;
+    body += `${descricao || ''}\r\n`;
+    body += `--${boundary}\r\n`;
+    body += `Content-Disposition: form-data; name="file"; filename="${fileName.replace(/["\r\n]/g, '_')}"\r\n`;
+    body += `Content-Type: ${(contentType || 'application/octet-stream').replace(/[\r\n]/g, '')}\r\n\r\n`;
+    
+    const headerBuffer = Buffer.from(body, 'utf-8');
+    const footerBuffer = Buffer.from(`\r\n--${boundary}--\r\n`, 'utf-8');
+    const fullBody = Buffer.concat([headerBuffer, fileBuffer, footerBuffer]);
+
+    const url = `${API_URL}/prontuarios/${encodeURIComponent(prontuarioId)}/upload`;
+    const headers = {
+      'Content-Type': `multipart/form-data; boundary=${boundary}`,
+      'Authorization': `Bearer ${jwtToken}`,
+    };
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: fullBody,
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    return await response.json();
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('list-anexos', async (event, { prontuarioId }) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED', data: [] };
+  try {
+    const result = await apiCall(`/prontuarios/anexos/${encodeURIComponent(prontuarioId)}`);
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message, data: [] };
+  }
+});
+
+ipcMain.handle('get-anexo', async (event, { anexoId }) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED' };
+  try {
+    const url = `${API_URL}/prontuarios/anexo/${encodeURIComponent(anexoId)}`;
+    const headers = { 'Authorization': `Bearer ${jwtToken}` };
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    const response = await fetch(url, { headers, signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      return { success: false, error: `HTTP ${response.status}` };
+    }
+
+    const contentType = response.headers.get('content-type') || 'application/octet-stream';
+    const disposition = response.headers.get('content-disposition') || '';
+    const fileNameMatch = disposition.match(/filename="?([^"]+)"?/);
+    const fileName = fileNameMatch ? fileNameMatch[1] : 'arquivo';
+    
+    const buffer = await response.arrayBuffer();
+    return {
+      success: true,
+      data: Buffer.from(buffer).toString('base64'),
+      contentType,
+      fileName,
+    };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('delete-anexo', async (event, { anexoId }) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED' };
+  try {
+    const result = await apiCall(`/prontuarios/anexo/${encodeURIComponent(anexoId)}`, {
+      method: 'DELETE',
+    });
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message };
   }
 });
 

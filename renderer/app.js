@@ -6,6 +6,13 @@ let currentLang = 'pt';
 let clinicaId = null;
 let currentScreen = 0;
 let allAppointments = [];
+let userRole = 'doctor'; // 'doctor' or 'receptionist'
+
+// --- HTML Escaping (XSS prevention) ---
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
 
 // --- Translation ---
 function t(key) {
@@ -136,6 +143,7 @@ async function showScreen(index) {
     case 3: showSearch(content); break;
     case 4: await showAlerts(content); break;
     case 5: showLogout(content); break;
+    case 6: showProntuarioMain(content); break;
   }
 }
 
@@ -654,7 +662,9 @@ function confirmLogout() {
   localStorage.removeItem('clinica_id');
   localStorage.removeItem('user_email');
   localStorage.removeItem('crm_medico');
+  localStorage.removeItem('user_role');
   clinicaId = null;
+  userRole = 'doctor';
 
   const content = document.getElementById('content-area');
   content.innerHTML = `
@@ -813,8 +823,10 @@ async function setupActivation() {
       const result = await window.api.loginUser({ email, password });
       if (result.success) {
         clinicaId = result.clinicaId || email;
+        userRole = result.role || 'doctor';
         localStorage.setItem('clinica_id', clinicaId);
         localStorage.setItem('user_email', email);
+        localStorage.setItem('user_role', userRole);
         showSnack(t('Login realizado com sucesso!'));
         showMainScreen();
       } else {
@@ -864,11 +876,15 @@ async function setupActivation() {
     if (errorDiv) { errorDiv.classList.add('hidden'); errorDiv.textContent = ''; }
 
     try {
-      const result = await window.api.registerUser({ email, password, licenseKey });
+      const registerRole = document.getElementById('register-role');
+      const role = registerRole ? registerRole.value : 'doctor';
+      const result = await window.api.registerUser({ email, password, licenseKey, role });
       if (result.success) {
         clinicaId = result.clinicaId || email;
+        userRole = result.role || role;
         localStorage.setItem('clinica_id', clinicaId);
         localStorage.setItem('user_email', email);
+        localStorage.setItem('user_role', userRole);
         showSnack(t('Conta criada com sucesso!'));
         showMainScreen();
       } else {
@@ -986,6 +1002,17 @@ function showMainScreen() {
   setupNavigation();
   setupLanguage();
   startClock();
+
+  // Show/hide prontuario nav based on role
+  const navProntuario = document.getElementById('nav-prontuario');
+  if (navProntuario) {
+    if (userRole === 'doctor') {
+      navProntuario.classList.remove('hidden');
+    } else {
+      navProntuario.classList.add('hidden');
+    }
+  }
+
   setActiveNav(0);
   showScreen(0);
 }
@@ -1007,3 +1034,583 @@ document.addEventListener('DOMContentLoaded', () => {
   setupActivation();
   // Always show login screen - user must authenticate to get JWT + encryption key
 });
+
+// ========================================
+// Prontuario Module (Doctor Only)
+// ========================================
+
+function showProntuarioMain(container) {
+  container.innerHTML = `
+    <div class="prontuario-container fade-in">
+      <div class="prontuario-header">
+        <div class="prontuario-title">
+          <span class="material-icons-round">description</span>
+          ${t('PRONTUARIO ELETRONICO')}
+        </div>
+      </div>
+      <div class="prontuario-search-bar">
+        <input type="text" class="prontuario-search-input" id="prontuario-patient-search" 
+          placeholder="${t('Nome do paciente ou CPF')}" />
+        <button class="btn-prontuario" id="btn-search-prontuario">
+          <span class="material-icons-round">search</span>
+          ${t('BUSCAR')}
+        </button>
+        <button class="btn-prontuario btn-secondary" id="btn-new-prontuario-main">
+          <span class="material-icons-round">add_circle</span>
+          ${t('NOVO PRONTUARIO')}
+        </button>
+      </div>
+      <div id="prontuario-results"></div>
+    </div>
+  `;
+  // Enter key triggers search
+  const searchInput = document.getElementById('prontuario-patient-search');
+  if (searchInput) {
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') searchProntuarioPatient();
+    });
+    searchInput.focus();
+  }
+  document.getElementById('btn-search-prontuario').addEventListener('click', () => searchProntuarioPatient());
+  document.getElementById('btn-new-prontuario-main').addEventListener('click', () => showProntuarioForm());
+}
+
+async function searchProntuarioPatient() {
+  const query = document.getElementById('prontuario-patient-search')?.value.trim();
+  if (!query) { showSnack(t('Digite o nome ou CPF do paciente.'), true); return; }
+
+  const resultsDiv = document.getElementById('prontuario-results');
+  if (!resultsDiv) return;
+  resultsDiv.innerHTML = '<div class="loading-spinner"></div>';
+
+  try {
+    // Search by patient_id (CPF or name)
+    const result = await window.api.getProntuarios({ patientId: query });
+    if (result.success && result.data && result.data.length > 0) {
+      renderProntuarioList(resultsDiv, result.data, query);
+    } else {
+      // Also search in appointments for matching patients
+      await fetchAppointments();
+      const matchingPatients = allAppointments.filter(a =>
+        (a.nome && a.nome.toLowerCase().includes(query.toLowerCase())) ||
+        (a.cpf && a.cpf.includes(query))
+      );
+      if (matchingPatients.length > 0) {
+        resultsDiv.innerHTML = `
+          <div style="margin-bottom:16px;color:var(--text-secondary);font-size:13px;">
+            ${t('Nenhum prontuario encontrado.')} ${t('Pacientes encontrados no cofre:')}
+          </div>
+        `;
+        const uniquePatients = [];
+        const seen = new Set();
+        matchingPatients.forEach(p => {
+          const key = (p.cpf || '') + '|' + (p.nome || '').toLowerCase();
+          if (!seen.has(key)) {
+            seen.add(key);
+            uniquePatients.push(p);
+          }
+        });
+        uniquePatients.forEach(p => {
+          const card = document.createElement('div');
+          card.className = 'prontuario-card';
+          card.innerHTML = `
+            <div class="prontuario-card-header">
+              <div><strong style="color:var(--text-primary);">${escapeHtml(p.nome)}</strong></div>
+              <div class="prontuario-card-badge">${t('SEM PRONTUARIO')}</div>
+            </div>
+            <div class="prontuario-card-field">
+              <span class="prontuario-card-label">CPF:</span>
+              <span class="prontuario-card-value">${escapeHtml(p.cpf) || '-'}</span>
+            </div>
+            <div class="prontuario-card-actions">
+              <button class="btn-prontuario btn-sm" data-cpf="${escapeHtml(p.cpf)}" data-nome="${escapeHtml(p.nome)}">
+                <span class="material-icons-round">add</span> ${t('CRIAR PRONTUARIO')}
+              </button>
+            </div>
+          `;
+          const addBtn = card.querySelector('[data-cpf]');
+          if (addBtn) {
+            addBtn.addEventListener('click', () => showProntuarioForm(addBtn.dataset.cpf, addBtn.dataset.nome));
+          }
+          resultsDiv.appendChild(card);
+        });
+      } else {
+        resultsDiv.innerHTML = `
+          <div class="prontuario-empty">
+            <span class="material-icons-round">search_off</span>
+            <div class="prontuario-empty-text">${t('Nenhum paciente encontrado.')}</div>
+            <div class="prontuario-empty-sub">${t('Verifique o nome ou CPF digitado.')}</div>
+          </div>
+        `;
+      }
+    }
+  } catch (e) {
+    resultsDiv.innerHTML = `<div class="prontuario-empty"><span class="material-icons-round">error</span><div class="prontuario-empty-text">${t('Erro de Conexão')}</div></div>`;
+  }
+}
+
+function renderProntuarioList(container, prontuarios, patientId) {
+  const patientName = prontuarios[0]?.patient_name || patientId;
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="color:var(--text-primary);font-size:15px;font-weight:600;">
+        <span class="material-icons-round" style="vertical-align:middle;color:var(--gold);margin-right:6px;">person</span>
+        ${escapeHtml(patientName)}
+        <span style="color:var(--text-muted);font-size:12px;margin-left:8px;">${prontuarios.length} ${t('prontuario(s)')}</span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-prontuario btn-sm btn-secondary" id="btn-print-prontuarios">
+          <span class="material-icons-round">print</span> ${t('IMPRIMIR')}
+        </button>
+        <button class="btn-prontuario btn-sm" id="btn-new-prontuario">
+          <span class="material-icons-round">add</span> ${t('NOVO')}
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('btn-print-prontuarios').addEventListener('click', () => printProntuarios(patientId));
+  document.getElementById('btn-new-prontuario').addEventListener('click', () => showProntuarioForm(patientId, patientName));
+
+  prontuarios.forEach(p => {
+    const date = p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '-';
+    const time = p.created_at ? new Date(p.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+    const card = document.createElement('div');
+    card.className = 'prontuario-card';
+    card.innerHTML = `
+      <div class="prontuario-card-header">
+        <div class="prontuario-card-date">${date} ${time}</div>
+        <div class="prontuario-card-badge">${p.anexo_count ? p.anexo_count + ' ' + t('ANEXO(S)') : t('PRONTUARIO')}</div>
+      </div>
+      <div class="prontuario-card-field">
+        <div class="prontuario-card-label">${t('SINTOMAS')}</div>
+        <div class="prontuario-card-value">${escapeHtml(p.sintomas) || '-'}</div>
+      </div>
+      <div class="prontuario-card-field">
+        <div class="prontuario-card-label">${t('DIAGNOSTICO')}</div>
+        <div class="prontuario-card-value">${escapeHtml(p.diagnostico) || '-'}</div>
+      </div>
+      <div class="prontuario-card-field">
+        <div class="prontuario-card-label">${t('TRATAMENTO')}</div>
+        <div class="prontuario-card-value">${escapeHtml(p.tratamento) || '-'}</div>
+      </div>
+      ${p.observacoes ? `<div class="prontuario-card-field"><div class="prontuario-card-label">${t('OBSERVACOES')}</div><div class="prontuario-card-value">${escapeHtml(p.observacoes)}</div></div>` : ''}
+      <div class="prontuario-card-actions">
+        <button class="btn-prontuario btn-sm btn-secondary btn-edit-pront" data-id="${escapeHtml(p.id)}">
+          <span class="material-icons-round">edit</span> ${t('EDITAR')}
+        </button>
+        <button class="btn-prontuario btn-sm btn-secondary btn-anexos-pront" data-id="${escapeHtml(p.id)}">
+          <span class="material-icons-round">attach_file</span> ${t('ANEXOS')}
+        </button>
+        <button class="btn-prontuario btn-sm btn-danger btn-delete-pront" data-id="${escapeHtml(p.id)}">
+          <span class="material-icons-round">delete</span>
+        </button>
+      </div>
+    `;
+    card.querySelector('.btn-edit-pront').addEventListener('click', () => editProntuario(p.id, patientId));
+    card.querySelector('.btn-anexos-pront').addEventListener('click', () => viewAnexos(p.id));
+    card.querySelector('.btn-delete-pront').addEventListener('click', () => deleteProntuarioConfirm(p.id, patientId));
+    container.appendChild(card);
+  });
+}
+
+function showProntuarioForm(patientId, patientName, editData) {
+  const container = document.getElementById('content-area');
+  const isEdit = !!editData;
+  container.innerHTML = `
+    <div class="prontuario-container fade-in">
+      <div class="prontuario-header">
+        <div class="prontuario-title">
+          <span class="material-icons-round">${isEdit ? 'edit_note' : 'note_add'}</span>
+          ${isEdit ? t('EDITAR PRONTUARIO') : t('NOVO PRONTUARIO')}
+        </div>
+        <button class="btn-prontuario btn-secondary btn-sm" id="btn-back-form">
+          <span class="material-icons-round">arrow_back</span> ${t('VOLTAR')}
+        </button>
+      </div>
+      <div class="prontuario-form">
+        <div class="prontuario-form-row">
+          <div class="prontuario-form-group">
+            <label class="prontuario-form-label">${t('PACIENTE (CPF OU ID)')}</label>
+            <input type="text" class="prontuario-form-input" id="pront-patient-id" value="${escapeHtml(patientId)}" placeholder="CPF" />
+          </div>
+          <div class="prontuario-form-group">
+            <label class="prontuario-form-label">${t('NOME DO PACIENTE')}</label>
+            <input type="text" class="prontuario-form-input" id="pront-patient-name" value="${escapeHtml(patientName)}" placeholder="${t('Nome do Paciente')}" />
+          </div>
+        </div>
+        <div class="prontuario-form-group">
+          <label class="prontuario-form-label">${t('SINTOMAS')}</label>
+          <textarea class="prontuario-form-textarea" id="pront-sintomas" placeholder="${t('Descreva os sintomas do paciente')}">${escapeHtml(editData?.sintomas)}</textarea>
+        </div>
+        <div class="prontuario-form-group">
+          <label class="prontuario-form-label">${t('DIAGNOSTICO')}</label>
+          <textarea class="prontuario-form-textarea" id="pront-diagnostico" placeholder="${t('Diagnostico medico')}">${escapeHtml(editData?.diagnostico)}</textarea>
+        </div>
+        <div class="prontuario-form-group">
+          <label class="prontuario-form-label">${t('TRATAMENTO')}</label>
+          <textarea class="prontuario-form-textarea" id="pront-tratamento" placeholder="${t('Plano de tratamento prescrito')}">${escapeHtml(editData?.tratamento)}</textarea>
+        </div>
+        <div class="prontuario-form-group">
+          <label class="prontuario-form-label">${t('OBSERVACOES')} (${t('OPCIONAL')})</label>
+          <textarea class="prontuario-form-textarea" id="pront-observacoes" placeholder="${t('Observacoes adicionais')}">${escapeHtml(editData?.observacoes)}</textarea>
+        </div>
+        <div class="prontuario-form-actions">
+          <button class="btn-prontuario" id="btn-save-prontuario">
+            <span class="material-icons-round">save</span>
+            ${isEdit ? t('SALVAR ALTERACOES') : t('SALVAR PRONTUARIO')}
+          </button>
+          <button class="btn-prontuario btn-secondary" id="btn-cancel-prontuario">
+            <span class="material-icons-round">cancel</span>
+            ${t('CANCELAR')}
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('btn-back-form').addEventListener('click', () => showScreen(6));
+  document.getElementById('btn-save-prontuario').addEventListener('click', () => {
+    if (isEdit) saveProntuarioEdit(editData.id, patientId);
+    else saveProntuarioNew();
+  });
+  document.getElementById('btn-cancel-prontuario').addEventListener('click', () => showScreen(6));
+}
+
+async function saveProntuarioNew() {
+  const patientId = document.getElementById('pront-patient-id')?.value.trim();
+  const patientName = document.getElementById('pront-patient-name')?.value.trim();
+  const sintomas = document.getElementById('pront-sintomas')?.value.trim();
+  const diagnostico = document.getElementById('pront-diagnostico')?.value.trim();
+  const tratamento = document.getElementById('pront-tratamento')?.value.trim();
+  const observacoes = document.getElementById('pront-observacoes')?.value.trim();
+
+  if (!patientId) { showSnack(t('Digite o CPF ou ID do paciente.'), true); return; }
+  if (!sintomas) { showSnack(t('Preencha os sintomas.'), true); return; }
+  if (!diagnostico) { showSnack(t('Preencha o diagnostico.'), true); return; }
+  if (!tratamento) { showSnack(t('Preencha o tratamento.'), true); return; }
+
+  try {
+    const result = await window.api.saveProntuario({
+      patient_id: patientId,
+      patient_name: patientName || '',
+      patient_cpf: patientId,
+      sintomas,
+      diagnostico,
+      tratamento,
+      observacoes: observacoes || '',
+    });
+    if (result.success) {
+      showSnack(t('Prontuario salvo com sucesso!'));
+      showScreen(6);
+    } else {
+      let msg = t('Erro ao salvar prontuario.');
+      if (result.detail === 'ACCESS_DENIED_DOCTOR_ONLY') msg = t('Acesso negado. Apenas medicos podem criar prontuarios.');
+      showSnack(msg, true);
+    }
+  } catch (e) {
+    showSnack(t('Erro de Conexão'), true);
+  }
+}
+
+async function saveProntuarioEdit(prontuarioId, patientId) {
+  const sintomas = document.getElementById('pront-sintomas')?.value.trim();
+  const diagnostico = document.getElementById('pront-diagnostico')?.value.trim();
+  const tratamento = document.getElementById('pront-tratamento')?.value.trim();
+  const observacoes = document.getElementById('pront-observacoes')?.value.trim();
+
+  if (!sintomas) { showSnack(t('Preencha os sintomas.'), true); return; }
+  if (!diagnostico) { showSnack(t('Preencha o diagnostico.'), true); return; }
+  if (!tratamento) { showSnack(t('Preencha o tratamento.'), true); return; }
+
+  try {
+    const result = await window.api.updateProntuario({
+      id: prontuarioId,
+      data: { sintomas, diagnostico, tratamento, observacoes: observacoes || '' },
+    });
+    if (result.success) {
+      showSnack(t('Prontuario atualizado com sucesso!'));
+      // Go back to search results for this patient
+      const content = document.getElementById('content-area');
+      showProntuarioMain(content);
+      document.getElementById('prontuario-patient-search').value = patientId;
+      await searchProntuarioPatient();
+    } else {
+      showSnack(t('Erro ao atualizar prontuario.'), true);
+    }
+  } catch (e) {
+    showSnack(t('Erro de Conexão'), true);
+  }
+}
+
+async function editProntuario(prontuarioId, patientId) {
+  try {
+    const result = await window.api.getProntuarios({ patientId });
+    if (result.success && result.data) {
+      const pront = result.data.find(p => p.id === prontuarioId);
+      if (pront) {
+        showProntuarioForm(patientId, pront.patient_name, pront);
+        return;
+      }
+    }
+    showSnack(t('Prontuario nao encontrado.'), true);
+  } catch (e) {
+    showSnack(t('Erro de Conexão'), true);
+  }
+}
+
+async function deleteProntuarioConfirm(prontuarioId, patientId) {
+  const container = document.getElementById('content-area');
+  container.innerHTML = `
+    <div class="prontuario-container fade-in" style="max-width:500px;margin:60px auto;text-align:center;">
+      <span class="material-icons-round" style="font-size:48px;color:var(--danger);margin-bottom:16px;">warning</span>
+      <h2 style="color:var(--text-primary);margin-bottom:12px;">${t('EXCLUIR PRONTUARIO?')}</h2>
+      <p style="color:var(--text-secondary);margin-bottom:24px;font-size:13px;">${t('Esta acao nao pode ser desfeita. O prontuario e todos os anexos serao removidos permanentemente.')}</p>
+      <div style="display:flex;gap:12px;justify-content:center;">
+        <button class="btn-prontuario btn-danger" id="btn-confirm-delete">
+          <span class="material-icons-round">delete_forever</span> ${t('SIM, EXCLUIR')}
+        </button>
+        <button class="btn-prontuario btn-secondary" id="btn-cancel-delete">
+          <span class="material-icons-round">cancel</span> ${t('CANCELAR')}
+        </button>
+      </div>
+    </div>
+  `;
+  document.getElementById('btn-confirm-delete').addEventListener('click', () => deleteProntuarioExecute(prontuarioId, patientId));
+  document.getElementById('btn-cancel-delete').addEventListener('click', () => showScreen(6));
+}
+
+async function deleteProntuarioExecute(prontuarioId, patientId) {
+  try {
+    const result = await window.api.deleteProntuario({ id: prontuarioId });
+    if (result.success) {
+      showSnack(t('Prontuario excluido com sucesso.'));
+      const content = document.getElementById('content-area');
+      showProntuarioMain(content);
+      document.getElementById('prontuario-patient-search').value = patientId;
+      await searchProntuarioPatient();
+    } else {
+      showSnack(t('Erro ao excluir prontuario.'), true);
+    }
+  } catch (e) {
+    showSnack(t('Erro de Conexão'), true);
+  }
+}
+
+async function viewAnexos(prontuarioId) {
+  const container = document.getElementById('content-area');
+  container.innerHTML = '<div class="loading-spinner"></div>';
+
+  try {
+    const result = await window.api.listAnexos({ prontuarioId });
+    const anexos = (result.success && result.data) ? result.data : [];
+
+    container.innerHTML = `
+      <div class="prontuario-container fade-in">
+        <div class="prontuario-header">
+          <div class="prontuario-title">
+            <span class="material-icons-round">attach_file</span>
+            ${t('ANEXOS DO PRONTUARIO')}
+          </div>
+          <button class="btn-prontuario btn-secondary btn-sm" id="btn-back-anexos">
+            <span class="material-icons-round">arrow_back</span> ${t('VOLTAR')}
+          </button>
+        </div>
+        <div class="file-upload-area" id="upload-area">
+          <span class="material-icons-round">cloud_upload</span>
+          <div class="file-upload-text">${t('Clique para enviar exame ou documento (max 10MB)')}</div>
+          <input type="file" id="file-input" class="file-upload-input" accept="image/*,.pdf,.doc,.docx,.txt" />
+        </div>
+        <div class="anexo-list" id="anexo-list"></div>
+      </div>
+    `;
+
+    // Add event listeners for back and upload area buttons
+    document.getElementById('btn-back-anexos').addEventListener('click', () => showScreen(6));
+    document.getElementById('upload-area').addEventListener('click', () => document.getElementById('file-input').click());
+
+    // Render existing anexos
+    const anexoList = document.getElementById('anexo-list');
+    if (anexos.length === 0) {
+      anexoList.innerHTML = `<div class="prontuario-empty" style="padding:30px;"><span class="material-icons-round">folder_open</span><div class="prontuario-empty-text">${t('Nenhum anexo encontrado.')}</div></div>`;
+    } else {
+      anexos.forEach(a => {
+        const sizeStr = a.size > 1024 * 1024 ? (a.size / 1024 / 1024).toFixed(1) + ' MB' : (a.size / 1024).toFixed(0) + ' KB';
+        const item = document.createElement('div');
+        item.className = 'anexo-item';
+        item.innerHTML = `
+          <span class="material-icons-round">${a.content_type?.startsWith('image') ? 'image' : 'insert_drive_file'}</span>
+          <span class="anexo-item-name">${escapeHtml(a.filename)}</span>
+          <span class="anexo-item-size">${sizeStr}</span>
+          ${a.descricao ? `<span style="color:var(--text-muted);font-size:11px;">${escapeHtml(a.descricao)}</span>` : ''}
+          <button class="btn-prontuario btn-sm btn-secondary btn-download-anexo" style="height:28px;padding:0 10px;">
+            <span class="material-icons-round" style="font-size:14px;">download</span>
+          </button>
+          <button class="btn-prontuario btn-sm btn-danger btn-delete-anexo" style="height:28px;padding:0 10px;">
+            <span class="material-icons-round" style="font-size:14px;">delete</span>
+          </button>
+        `;
+        item.querySelector('.btn-download-anexo').addEventListener('click', () => downloadAnexo(a.id));
+        item.querySelector('.btn-delete-anexo').addEventListener('click', () => deleteAnexoConfirm(a.id, prontuarioId));
+        anexoList.appendChild(item);
+      });
+    }
+
+    // File upload handler
+    document.getElementById('file-input').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 10 * 1024 * 1024) {
+        showSnack(t('Arquivo muito grande (max 10MB).'), true);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result.split(',')[1];
+        showSnack(t('Enviando arquivo...'));
+        try {
+          const result = await window.api.uploadAnexo({
+            prontuarioId,
+            fileData: base64,
+            fileName: file.name,
+            contentType: file.type,
+            descricao: '',
+          });
+          if (result.success) {
+            showSnack(t('Arquivo enviado com sucesso!'));
+            viewAnexos(prontuarioId);
+          } else {
+            showSnack(t('Erro ao enviar arquivo.'), true);
+          }
+        } catch (err) {
+          showSnack(t('Erro de Conexão'), true);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  } catch (e) {
+    container.innerHTML = `<div class="prontuario-empty"><span class="material-icons-round">error</span><div class="prontuario-empty-text">${t('Erro de Conexão')}</div></div>`;
+  }
+}
+
+async function downloadAnexo(anexoId) {
+  try {
+    showSnack(t('Baixando arquivo...'));
+    const result = await window.api.getAnexo({ anexoId });
+    if (result.success && result.data) {
+      // Create download via data URL
+      const blob = new Blob([Uint8Array.from(atob(result.data), c => c.charCodeAt(0))], { type: result.contentType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = result.fileName || 'arquivo';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } else {
+      showSnack(t('Erro ao baixar arquivo.'), true);
+    }
+  } catch (e) {
+    showSnack(t('Erro de Conexão'), true);
+  }
+}
+
+async function deleteAnexoConfirm(anexoId, prontuarioId) {
+  if (confirm(t('Deseja excluir este anexo?'))) {
+    try {
+      const result = await window.api.deleteAnexo({ anexoId });
+      if (result.success) {
+        showSnack(t('Anexo excluido com sucesso.'));
+        viewAnexos(prontuarioId);
+      } else {
+        showSnack(t('Erro ao excluir anexo.'), true);
+      }
+    } catch (e) {
+      showSnack(t('Erro de Conexão'), true);
+    }
+  }
+}
+
+async function printProntuarios(patientId) {
+  try {
+    const result = await window.api.getProntuarios({ patientId });
+    if (!result.success || !result.data || result.data.length === 0) {
+      showSnack(t('Nenhum prontuario para imprimir.'), true);
+      return;
+    }
+
+    const prontuarios = result.data;
+    const patientName = prontuarios[0]?.patient_name || patientId;
+    const userEmail = localStorage.getItem('user_email') || '';
+
+    let html = `
+      <!DOCTYPE html>
+      <html><head><meta charset="UTF-8">
+      <title>${t('PRONTUARIO')} - ${escapeHtml(patientName)}</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+        .header { text-align: center; border-bottom: 3px solid #d4af37; padding-bottom: 16px; margin-bottom: 24px; }
+        .header h1 { color: #d4af37; font-size: 24px; margin: 0; }
+        .header p { color: #666; font-size: 13px; margin: 4px 0; }
+        .patient-info { background: #f9f9f9; padding: 16px; border-radius: 8px; margin-bottom: 20px; }
+        .patient-info h2 { margin: 0 0 8px; font-size: 16px; }
+        .record { border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 16px; page-break-inside: avoid; }
+        .record-date { font-size: 12px; color: #888; margin-bottom: 12px; font-family: monospace; }
+        .field { margin-bottom: 10px; }
+        .field-label { font-size: 11px; font-weight: 700; color: #d4af37; text-transform: uppercase; letter-spacing: 1px; }
+        .field-value { font-size: 13px; line-height: 1.6; margin-top: 2px; }
+        .footer { margin-top: 40px; text-align: center; border-top: 1px solid #ddd; padding-top: 20px; }
+        .signature { margin-top: 60px; text-align: center; }
+        .signature-line { width: 300px; border-top: 1px solid #333; margin: 0 auto; padding-top: 8px; font-size: 13px; }
+        @media print { body { margin: 20px; } }
+      </style></head><body>
+      <div class="header">
+        <h1>MEDICAL SAFE GOLD</h1>
+        <p>${t('PRONTUARIO ELETRONICO')}</p>
+      </div>
+      <div class="patient-info">
+        <h2>${escapeHtml(patientName)}</h2>
+        <p><strong>CPF/ID:</strong> ${escapeHtml(patientId)}</p>
+        <p><strong>${t('MEDICO')}:</strong> ${escapeHtml(userEmail)}</p>
+        <p><strong>${t('DATA DE IMPRESSAO')}:</strong> ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}</p>
+      </div>
+    `;
+
+    prontuarios.forEach((p, i) => {
+      const date = p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '-';
+      const time = p.created_at ? new Date(p.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+      html += `
+        <div class="record">
+          <div class="record-date">#${i + 1} - ${date} ${time}</div>
+          <div class="field"><div class="field-label">${t('SINTOMAS')}</div><div class="field-value">${escapeHtml(p.sintomas) || '-'}</div></div>
+          <div class="field"><div class="field-label">${t('DIAGNOSTICO')}</div><div class="field-value">${escapeHtml(p.diagnostico) || '-'}</div></div>
+          <div class="field"><div class="field-label">${t('TRATAMENTO')}</div><div class="field-value">${escapeHtml(p.tratamento) || '-'}</div></div>
+          ${p.observacoes ? `<div class="field"><div class="field-label">${t('OBSERVACOES')}</div><div class="field-value">${escapeHtml(p.observacoes)}</div></div>` : ''}
+        </div>
+      `;
+    });
+
+    html += `
+      <div class="signature">
+        <div class="signature-line">${escapeHtml(userEmail)}<br><small>${t('MEDICO RESPONSAVEL')}</small></div>
+      </div>
+      <div class="footer">
+        <small>${t('DOCUMENTO GERADO POR MEDICAL SAFE GOLD')} - ${t('PROTEGIDO POR LGPD')}</small>
+      </div>
+      </body></html>
+    `;
+
+    // Open print window
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!printWindow) {
+      showSnack(t('Erro ao abrir janela de impressão.'), true);
+      return;
+    }
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 500);
+  } catch (e) {
+    showSnack(t('Erro de Conexão'), true);
+  }
+}
