@@ -401,7 +401,7 @@ ipcMain.handle('upload-anexo', async (event, { prontuarioId, fileData, fileName,
     body += `${descricao || ''}\r\n`;
     body += `--${boundary}\r\n`;
     body += `Content-Disposition: form-data; name="file"; filename="${fileName.replace(/["\r\n]/g, '_')}"\r\n`;
-    body += `Content-Type: ${contentType || 'application/octet-stream'}\r\n\r\n`;
+    body += `Content-Type: ${(contentType || 'application/octet-stream').replace(/[\r\n]/g, '')}\r\n\r\n`;
     
     const headerBuffer = Buffer.from(body, 'utf-8');
     const footerBuffer = Buffer.from(`\r\n--${boundary}--\r\n`, 'utf-8');

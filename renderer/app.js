@@ -1602,6 +1602,10 @@ async function printProntuarios(patientId) {
 
     // Open print window
     const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!printWindow) {
+      showSnack(t('Erro ao abrir janela de impressão.'), true);
+      return;
+    }
     printWindow.document.write(html);
     printWindow.document.close();
     printWindow.focus();
