@@ -1084,8 +1084,8 @@ async function searchProntuarioPatient() {
   resultsDiv.innerHTML = '<div class="loading-spinner"></div>';
 
   try {
-    // Search by patient_id (CPF or name)
-    const result = await window.api.getProntuarios({ patientId: query });
+    // Search by patient name, CPF, or ID (partial, case-insensitive)
+    const result = await window.api.searchProntuarios({ query });
     if (result.success && result.data && result.data.length > 0) {
       renderProntuarioList(resultsDiv, result.data, query);
     } else {

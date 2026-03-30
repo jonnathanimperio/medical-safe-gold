@@ -332,6 +332,33 @@ ipcMain.handle('save-prontuario', async (event, data) => {
   }
 });
 
+ipcMain.handle('search-prontuarios', async (event, { query }) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED', data: [] };
+  try {
+    const result = await apiCall(`/prontuarios/search?q=${encodeURIComponent(query)}`);
+    if (result.success && result.data && userFernetSecret) {
+      for (const doc of result.data) {
+        if (doc.encrypted && doc.sintomas) {
+          try {
+            const decrypted = decryptData(doc.sintomas);
+            if (decrypted) {
+              doc.sintomas = decrypted.sintomas || '';
+              doc.diagnostico = decrypted.diagnostico || '';
+              doc.tratamento = decrypted.tratamento || '';
+              doc.observacoes = decrypted.observacoes || '';
+            }
+          } catch (decErr) {
+            console.error('[PRONTUARIO] Decryption failed for doc:', doc.id, decErr.message);
+          }
+        }
+      }
+    }
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message, data: [] };
+  }
+});
+
 ipcMain.handle('get-prontuarios', async (event, { patientId }) => {
   if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED', data: [] };
   try {

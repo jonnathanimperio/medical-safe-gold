@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('api', {
   getAppointments: (data) => ipcRenderer.invoke('get-appointments', data),
   // Prontuario
   saveProntuario: (data) => ipcRenderer.invoke('save-prontuario', data),
+  searchProntuarios: (data) => ipcRenderer.invoke('search-prontuarios', data),
   getProntuarios: (data) => ipcRenderer.invoke('get-prontuarios', data),
   updateProntuario: (data) => ipcRenderer.invoke('update-prontuario', data),
   deleteProntuario: (data) => ipcRenderer.invoke('delete-prontuario', data),
