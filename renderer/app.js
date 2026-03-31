@@ -1899,10 +1899,12 @@ async function openCheckoutForPlan(plan, email) {
   try {
     showSnack(t('Abrindo pagamento...'));
 
+    // Get API URL from main process config
+    const apiUrl = await window.api.getApiUrl();
+
     // Call backend to create payment preference
     const response = await fetch(
-      (localStorage.getItem('api_url') || document.querySelector('meta[name="api-url"]')?.content || 'https://web-production-2043d.up.railway.app') +
-      '/payments/create-preference',
+      apiUrl + '/payments/create-preference',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

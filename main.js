@@ -524,6 +524,10 @@ ipcMain.handle('check-subscription-status', async () => {
 // --- Open External URL (for renewal) ---
 ipcMain.handle('open-external-url', async (event, { url }) => {
   try {
+    // Only allow https URLs to prevent arbitrary protocol execution
+    if (!url || !url.startsWith('https://')) {
+      return { success: false, error: 'INVALID_URL' };
+    }
     const { shell } = require('electron');
     await shell.openExternal(url);
     return { success: true };
@@ -531,6 +535,9 @@ ipcMain.handle('open-external-url', async (event, { url }) => {
     return { success: false, error: e.message };
   }
 });
+
+// --- Get API URL for renderer ---
+ipcMain.handle('get-api-url', () => API_URL);
 
 ipcMain.handle('window-minimize', () => mainWindow.minimize());
 ipcMain.handle('window-maximize', () => {
