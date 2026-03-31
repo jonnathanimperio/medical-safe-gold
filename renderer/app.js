@@ -7,6 +7,10 @@ let clinicaId = null;
 let currentScreen = 0;
 let allAppointments = [];
 let userRole = 'doctor'; // 'doctor' or 'receptionist'
+let subscriptionStatus = 'trial';
+let subscriptionPlan = null;
+let subscriptionExpires = null;
+let subscriptionCheckInterval = null;
 
 // --- HTML Escaping (XSS prevention) ---
 function escapeHtml(str) {
@@ -663,8 +667,18 @@ function confirmLogout() {
   localStorage.removeItem('user_email');
   localStorage.removeItem('crm_medico');
   localStorage.removeItem('user_role');
+  localStorage.removeItem('subscription_status');
+  localStorage.removeItem('subscription_plan');
+  localStorage.removeItem('subscription_expires');
   clinicaId = null;
   userRole = 'doctor';
+  subscriptionStatus = 'trial';
+  subscriptionPlan = null;
+  subscriptionExpires = null;
+  if (subscriptionCheckInterval) {
+    clearInterval(subscriptionCheckInterval);
+    subscriptionCheckInterval = null;
+  }
 
   const content = document.getElementById('content-area');
   content.innerHTML = `
@@ -824,16 +838,25 @@ async function setupActivation() {
       if (result.success) {
         clinicaId = result.clinicaId || email;
         userRole = result.role || 'doctor';
+        subscriptionStatus = result.subscriptionStatus || 'trial';
+        subscriptionPlan = result.subscriptionPlan || null;
+        subscriptionExpires = result.subscriptionExpires || null;
         localStorage.setItem('clinica_id', clinicaId);
         localStorage.setItem('user_email', email);
         localStorage.setItem('user_role', userRole);
+        localStorage.setItem('subscription_status', subscriptionStatus);
+        localStorage.setItem('subscription_plan', subscriptionPlan || '');
+        localStorage.setItem('subscription_expires', subscriptionExpires || '');
         showSnack(t('Login realizado com sucesso!'));
         showMainScreen();
       } else {
         let msg = t('Erro de Conexão');
         if (result.error === 'USER_NOT_FOUND') msg = t('Usuário não encontrado!');
         else if (result.error === 'WRONG_PASSWORD') msg = t('Senha incorreta!');
-        else if (result.error === 'SUBSCRIPTION_EXPIRED') msg = t('Assinatura expirada! Renove seu plano.');
+        else if (result.error === 'SUBSCRIPTION_EXPIRED') {
+          msg = t('Assinatura expirada! Renove seu plano.');
+          showSubscriptionExpiredModal(email);
+        }
         else if (result.error === 'DB_NOT_CONNECTED' || result.error === 'API_ERROR') msg = t('Erro de Conexão');
         if (errorDiv) { errorDiv.textContent = msg; errorDiv.classList.remove('hidden'); }
         showSnack(msg, true);
@@ -1002,6 +1025,8 @@ function showMainScreen() {
   setupNavigation();
   setupLanguage();
   startClock();
+  updateSubscriptionBadge();
+  startSubscriptionCheck();
 
   // Show/hide prontuario nav based on role
   const navProntuario = document.getElementById('nav-prontuario');
@@ -1611,6 +1636,292 @@ async function printProntuarios(patientId) {
     printWindow.focus();
     setTimeout(() => printWindow.print(), 500);
   } catch (e) {
+    showSnack(t('Erro de Conexão'), true);
+  }
+}
+
+// ========================================
+// Subscription Verification
+// ========================================
+
+function getSubscriptionLabel(status, plan) {
+  if (status === 'trial') return t('Teste Gratuito');
+  if (status === 'active') {
+    if (plan === 'annual') return t('Plano Anual');
+    if (plan === 'monthly') return t('Plano Mensal');
+    return t('Assinatura Ativa');
+  }
+  if (status === 'expired' || status === 'trial_expired') return t('Expirado');
+  return t('Inativo');
+}
+
+function getSubscriptionColor(status) {
+  if (status === 'active') return '#45c97a';
+  if (status === 'trial') return '#ffbd2e';
+  return '#ff4757';
+}
+
+function formatExpiryDate(isoStr) {
+  if (!isoStr) return '';
+  try {
+    const d = new Date(isoStr);
+    return d.toLocaleDateString('pt-BR');
+  } catch (e) {
+    return '';
+  }
+}
+
+function getDaysUntilExpiry(isoStr) {
+  if (!isoStr) return null;
+  try {
+    const now = new Date();
+    const exp = new Date(isoStr);
+    const diff = Math.ceil((exp - now) / (1000 * 60 * 60 * 24));
+    return diff;
+  } catch (e) {
+    return null;
+  }
+}
+
+function updateSubscriptionBadge() {
+  // Remove existing badge if any
+  const existing = document.getElementById('subscription-badge');
+  if (existing) existing.remove();
+
+  const label = getSubscriptionLabel(subscriptionStatus, subscriptionPlan);
+  const color = getSubscriptionColor(subscriptionStatus);
+  const expiryStr = formatExpiryDate(subscriptionExpires);
+  const daysLeft = getDaysUntilExpiry(subscriptionExpires);
+
+  let expiryInfo = '';
+  if (expiryStr) {
+    if (daysLeft !== null && daysLeft <= 7 && daysLeft > 0) {
+      expiryInfo = ` - ${daysLeft}d`;
+    } else if (expiryStr) {
+      expiryInfo = ` - ${expiryStr}`;
+    }
+  }
+
+  const badge = document.createElement('div');
+  badge.id = 'subscription-badge';
+  badge.style.cssText = `
+    position: fixed; bottom: 16px; left: 16px; z-index: 999;
+    background: rgba(10,10,15,0.9); border: 1px solid ${color}40;
+    border-radius: 8px; padding: 6px 12px;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: #8888a0; cursor: pointer;
+    backdrop-filter: blur(8px); transition: all 0.2s ease;
+  `;
+  badge.innerHTML = `
+    <span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block;"></span>
+    <span style="color:${color};font-weight:600;">${escapeHtml(label)}</span>
+    <span>${escapeHtml(expiryInfo)}</span>
+  `;
+
+  // Show warning if expiring soon
+  if (daysLeft !== null && daysLeft <= 7 && daysLeft > 0 && subscriptionStatus !== 'trial') {
+    badge.title = t('Sua assinatura expira em breve. Clique para renovar.');
+    badge.addEventListener('click', () => {
+      const email = localStorage.getItem('user_email') || '';
+      showRenewalModal(email);
+    });
+  } else if (subscriptionStatus === 'trial') {
+    badge.title = t('Voce esta no periodo de teste. Clique para assinar.');
+    badge.addEventListener('click', () => {
+      const email = localStorage.getItem('user_email') || '';
+      showRenewalModal(email);
+    });
+  }
+
+  document.body.appendChild(badge);
+}
+
+function startSubscriptionCheck() {
+  // Check subscription every 30 minutes
+  if (subscriptionCheckInterval) clearInterval(subscriptionCheckInterval);
+  subscriptionCheckInterval = setInterval(async () => {
+    try {
+      const result = await window.api.checkSubscriptionStatus();
+      if (result.success) {
+        const newStatus = result.subscription_status || subscriptionStatus;
+        const wasActive = subscriptionStatus === 'active' || subscriptionStatus === 'trial';
+        subscriptionStatus = newStatus;
+        subscriptionPlan = result.subscription_plan || subscriptionPlan;
+        subscriptionExpires = result.subscription_expires || subscriptionExpires;
+        localStorage.setItem('subscription_status', subscriptionStatus);
+        localStorage.setItem('subscription_plan', subscriptionPlan || '');
+        localStorage.setItem('subscription_expires', subscriptionExpires || '');
+        updateSubscriptionBadge();
+
+        // If subscription just expired, show modal
+        if (wasActive && (newStatus === 'expired' || newStatus === 'trial_expired')) {
+          const email = localStorage.getItem('user_email') || '';
+          showSubscriptionExpiredModal(email);
+        }
+      }
+    } catch (e) {
+      console.error('Subscription check failed:', e);
+    }
+  }, 30 * 60 * 1000); // 30 minutes
+}
+
+function showSubscriptionExpiredModal(email) {
+  // Remove existing modal if any
+  const existing = document.getElementById('subscription-expired-modal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'subscription-expired-modal';
+  modal.style.cssText = `
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 10000;
+    background: rgba(0,0,0,0.85); display: flex; align-items: center;
+    justify-content: center; backdrop-filter: blur(4px);
+  `;
+  modal.innerHTML = `
+    <div style="
+      background: #13131d; border: 1px solid rgba(212,175,55,0.3);
+      border-radius: 16px; padding: 40px; max-width: 460px; width: 90%;
+      text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    ">
+      <div style="
+        width: 72px; height: 72px; border-radius: 50%;
+        background: linear-gradient(135deg, #ff4757, #c0392b);
+        display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 20px; font-size: 36px;
+      ">
+        <span class="material-icons-round" style="color: #fff; font-size: 36px;">warning</span>
+      </div>
+      <h2 style="color: #d4af37; font-size: 22px; margin-bottom: 12px;">${t('ASSINATURA EXPIRADA')}</h2>
+      <p style="color: #8888a0; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
+        ${t('Sua assinatura expirou. Renove para continuar usando o Medical Safe Gold.')}
+      </p>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button id="btn-renew-monthly" style="
+          background: linear-gradient(135deg, #d4af37, #b8960c);
+          color: #0a0a0f; border: none; border-radius: 10px;
+          padding: 14px 24px; font-size: 15px; font-weight: 700;
+          cursor: pointer; transition: transform 0.2s;
+        ">${t('PLANO MENSAL')} - R$ 69/m${escapeHtml('\u00eas')}</button>
+        <button id="btn-renew-annual" style="
+          background: linear-gradient(135deg, #45c97a, #2a9d5c);
+          color: #fff; border: none; border-radius: 10px;
+          padding: 14px 24px; font-size: 15px; font-weight: 700;
+          cursor: pointer; transition: transform 0.2s;
+        ">${t('PLANO ANUAL')} - R$ 549/${t('ano')} <span style="font-size:11px;opacity:0.8;">(${t('economia de')} 34%)</span></button>
+        <button id="btn-dismiss-expired" style="
+          background: transparent; color: #8888a0; border: 1px solid #333;
+          border-radius: 10px; padding: 10px 24px; font-size: 13px;
+          cursor: pointer; margin-top: 8px;
+        ">${t('FECHAR')}</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  document.getElementById('btn-renew-monthly').addEventListener('click', async () => {
+    await openCheckoutForPlan('monthly', email);
+  });
+  document.getElementById('btn-renew-annual').addEventListener('click', async () => {
+    await openCheckoutForPlan('annual', email);
+  });
+  document.getElementById('btn-dismiss-expired').addEventListener('click', () => {
+    modal.remove();
+  });
+}
+
+function showRenewalModal(email) {
+  // Remove existing modal if any
+  const existing = document.getElementById('subscription-expired-modal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'subscription-expired-modal';
+  modal.style.cssText = `
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 10000;
+    background: rgba(0,0,0,0.85); display: flex; align-items: center;
+    justify-content: center; backdrop-filter: blur(4px);
+  `;
+  modal.innerHTML = `
+    <div style="
+      background: #13131d; border: 1px solid rgba(212,175,55,0.3);
+      border-radius: 16px; padding: 40px; max-width: 460px; width: 90%;
+      text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    ">
+      <div style="
+        width: 72px; height: 72px; border-radius: 50%;
+        background: linear-gradient(135deg, #d4af37, #b8960c);
+        display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 20px;
+      ">
+        <span class="material-icons-round" style="color: #0a0a0f; font-size: 36px;">star</span>
+      </div>
+      <h2 style="color: #d4af37; font-size: 22px; margin-bottom: 12px;">${t('ESCOLHA SEU PLANO')}</h2>
+      <p style="color: #8888a0; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
+        ${t('Assine o Medical Safe Gold para acesso completo.')}
+      </p>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button id="btn-renew-monthly" style="
+          background: linear-gradient(135deg, #d4af37, #b8960c);
+          color: #0a0a0f; border: none; border-radius: 10px;
+          padding: 14px 24px; font-size: 15px; font-weight: 700;
+          cursor: pointer;
+        ">${t('PLANO MENSAL')} - R$ 69/m${escapeHtml('\u00eas')}</button>
+        <button id="btn-renew-annual" style="
+          background: linear-gradient(135deg, #45c97a, #2a9d5c);
+          color: #fff; border: none; border-radius: 10px;
+          padding: 14px 24px; font-size: 15px; font-weight: 700;
+          cursor: pointer;
+        ">${t('PLANO ANUAL')} - R$ 549/${t('ano')} <span style="font-size:11px;opacity:0.8;">(${t('economia de')} 34%)</span></button>
+        <button id="btn-dismiss-expired" style="
+          background: transparent; color: #8888a0; border: 1px solid #333;
+          border-radius: 10px; padding: 10px 24px; font-size: 13px;
+          cursor: pointer; margin-top: 8px;
+        ">${t('FECHAR')}</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  document.getElementById('btn-renew-monthly').addEventListener('click', async () => {
+    await openCheckoutForPlan('monthly', email);
+  });
+  document.getElementById('btn-renew-annual').addEventListener('click', async () => {
+    await openCheckoutForPlan('annual', email);
+  });
+  document.getElementById('btn-dismiss-expired').addEventListener('click', () => {
+    modal.remove();
+  });
+}
+
+async function openCheckoutForPlan(plan, email) {
+  try {
+    showSnack(t('Abrindo pagamento...'));
+
+    // Call backend to create payment preference
+    const response = await fetch(
+      (localStorage.getItem('api_url') || document.querySelector('meta[name="api-url"]')?.content || 'https://web-production-2043d.up.railway.app') +
+      '/payments/create-preference',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan, email }),
+      }
+    );
+    const data = await response.json();
+
+    if (data.success && data.checkout_url) {
+      await window.api.openExternalUrl({ url: data.checkout_url });
+      showSnack(t('Pagamento aberto no navegador!'));
+      // Close the modal
+      const modal = document.getElementById('subscription-expired-modal');
+      if (modal) modal.remove();
+    } else {
+      showSnack(t('Erro ao criar pagamento.'), true);
+    }
+  } catch (e) {
+    console.error('Checkout error:', e);
     showSnack(t('Erro de Conexão'), true);
   }
 }

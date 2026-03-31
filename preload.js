@@ -20,6 +20,8 @@ contextBridge.exposeInMainWorld('api', {
   listAnexos: (data) => ipcRenderer.invoke('list-anexos', data),
   getAnexo: (data) => ipcRenderer.invoke('get-anexo', data),
   deleteAnexo: (data) => ipcRenderer.invoke('delete-anexo', data),
+  checkSubscriptionStatus: () => ipcRenderer.invoke('check-subscription-status'),
+  openExternalUrl: (data) => ipcRenderer.invoke('open-external-url', data),
   windowMinimize: () => ipcRenderer.invoke('window-minimize'),
   windowMaximize: () => ipcRenderer.invoke('window-maximize'),
   windowClose: () => ipcRenderer.invoke('window-close'),

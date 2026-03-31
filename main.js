@@ -508,6 +508,30 @@ ipcMain.handle('delete-anexo', async (event, { anexoId }) => {
   }
 });
 
+// --- Subscription Status Check ---
+ipcMain.handle('check-subscription-status', async () => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED' };
+  try {
+    const result = await apiCall('/subscription/status', {
+      method: 'GET',
+    });
+    return result;
+  } catch (e) {
+    return { success: false, error: 'API_ERROR' };
+  }
+});
+
+// --- Open External URL (for renewal) ---
+ipcMain.handle('open-external-url', async (event, { url }) => {
+  try {
+    const { shell } = require('electron');
+    await shell.openExternal(url);
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
 ipcMain.handle('window-minimize', () => mainWindow.minimize());
 ipcMain.handle('window-maximize', () => {
   if (mainWindow.isMaximized()) mainWindow.unmaximize();
