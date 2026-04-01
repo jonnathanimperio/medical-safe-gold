@@ -8,6 +8,16 @@ let currentScreen = 0;
 let allAppointments = [];
 let userRole = 'doctor'; // 'doctor' or 'receptionist'
 
+// --- UTC Date Parser (backend returns UTC without Z suffix) ---
+function parseUTCDate(dateStr) {
+  if (!dateStr) return null;
+  // Ensure the ISO string is treated as UTC by appending Z if no timezone info
+  if (!dateStr.endsWith('Z') && !dateStr.includes('+') && !dateStr.includes('-', 10)) {
+    dateStr += 'Z';
+  }
+  return new Date(dateStr);
+}
+
 // --- HTML Escaping (XSS prevention) ---
 function escapeHtml(str) {
   if (!str) return '';
@@ -1173,8 +1183,9 @@ function renderProntuarioList(container, prontuarios, patientId) {
   document.getElementById('btn-new-prontuario').addEventListener('click', () => showProntuarioForm(patientId, patientName));
 
   prontuarios.forEach(p => {
-    const date = p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '-';
-    const time = p.created_at ? new Date(p.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+    const dateObj = p.created_at ? parseUTCDate(p.created_at) : null;
+    const date = dateObj ? dateObj.toLocaleDateString('pt-BR') : '-';
+    const time = dateObj ? dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
     const card = document.createElement('div');
     card.className = 'prontuario-card';
     card.innerHTML = `
@@ -1577,8 +1588,9 @@ async function printProntuarios(patientId) {
     `;
 
     prontuarios.forEach((p, i) => {
-      const date = p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '-';
-      const time = p.created_at ? new Date(p.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+      const dateObj = p.created_at ? parseUTCDate(p.created_at) : null;
+      const date = dateObj ? dateObj.toLocaleDateString('pt-BR') : '-';
+      const time = dateObj ? dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
       html += `
         <div class="record">
           <div class="record-date">#${i + 1} - ${date} ${time}</div>
