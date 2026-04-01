@@ -7,6 +7,7 @@ let clinicaId = null;
 let currentScreen = 0;
 let allAppointments = [];
 let userRole = 'doctor'; // 'doctor' or 'receptionist'
+let updateListenerRegistered = false;
 
 // --- UTC Date Parser (backend returns UTC without Z suffix) ---
 function parseUTCDate(dateStr) {
@@ -1006,7 +1007,9 @@ async function setupActivation() {
 }
 
 function setupUpdateListener() {
+  if (updateListenerRegistered) return;
   if (!window.api.onUpdateStatus) return;
+  updateListenerRegistered = true;
   window.api.onUpdateStatus((data) => {
     const banner = document.getElementById('update-banner');
     const text = document.getElementById('update-text');

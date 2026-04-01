@@ -554,17 +554,19 @@ function setupAutoUpdater() {
         message: `Atualização ${info.version} pronta! Reinicie o app para aplicar.`,
       });
     }
-    dialog.showMessageBox(mainWindow, {
-      type: 'info',
-      title: 'Atualização Disponível',
-      message: `A versão ${info.version} foi baixada. O app será reiniciado para aplicar a atualização.`,
-      buttons: ['Reiniciar Agora', 'Mais Tarde'],
-      defaultId: 0,
-    }).then((result) => {
-      if (result.response === 0) {
-        autoUpdater.quitAndInstall(false, true);
-      }
-    });
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'Atualização Disponível',
+        message: `A versão ${info.version} foi baixada. O app será reiniciado para aplicar a atualização.`,
+        buttons: ['Reiniciar Agora', 'Mais Tarde'],
+        defaultId: 0,
+      }).then((result) => {
+        if (result.response === 0) {
+          autoUpdater.quitAndInstall(false, true);
+        }
+      });
+    }
   });
 
   autoUpdater.on('error', (err) => {
