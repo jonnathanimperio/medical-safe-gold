@@ -633,7 +633,14 @@ function formatWhatsAppNumber(whatsapp) {
 }
 
 async function enviarZap(appointment, confirmacao) {
-  const BACKEND_URL = 'https://web-production-2043d.up.railway.app';
+  // Get backend URL from config (via IPC) instead of hardcoding
+  let backendUrl = 'https://web-production-2043d.up.railway.app';
+  try {
+    const apiUrl = await window.api.getApiUrl();
+    if (apiUrl) backendUrl = apiUrl;
+  } catch (e) {
+    console.error('Get API URL error:', e);
+  }
   let uuid = confirmacao ? confirmacao.uuid : null;
   // If no confirmation record exists yet, create one
   if (!uuid && appointment.whatsapp) {
@@ -667,11 +674,16 @@ async function enviarZap(appointment, confirmacao) {
   }
   // Build wa.me link
   const phone = formatWhatsAppNumber(appointment.whatsapp);
-  const confirmUrl = `${BACKEND_URL}/confirmar/${uuid}`;
+  const confirmUrl = `${backendUrl}/confirmar/${uuid}`;
   const msg = `Olá ${appointment.nome}, confirmamos sua consulta para ${appointment.dia} às ${appointment.hora}?\n\nClique para confirmar: ${confirmUrl}`;
   const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
-  // Open in default browser
-  window.open(waUrl, '_blank');
+  // Open in system default browser (not Electron window)
+  try {
+    await window.api.openExternalUrl({ url: waUrl });
+  } catch (e) {
+    // Fallback to window.open if IPC fails
+    window.open(waUrl, '_blank');
+  }
   // Refresh the alerts view
   await fetchConfirmacoes();
   const content = document.getElementById('main-content');

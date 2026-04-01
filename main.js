@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const crypto = require('crypto');
 const os = require('os');
@@ -534,6 +534,17 @@ ipcMain.handle('list-confirmacoes', async (event, { clinicaId }) => {
     return { success: false, error: e.message, data: [] };
   }
 });
+
+ipcMain.handle('open-external-url', async (event, { url }) => {
+  try {
+    await shell.openExternal(url);
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('get-api-url', () => API_URL);
 
 ipcMain.handle('mark-confirmacao-enviado', async (event, { uuid }) => {
   if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED' };
