@@ -1,9 +1,10 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const crypto = require('crypto');
 const os = require('os');
 const fs = require('fs');
 const fernet = require('fernet');
+const { autoUpdater } = require('electron-updater');
 
 // --- Backend API Configuration ---
 // Default API URL - override via config.json in the app root directory
@@ -124,6 +125,7 @@ app.whenReady().then(async () => {
   loadConfig();
   await checkApiHealth();
   createWindow();
+  setupAutoUpdater();
 });
 
 app.on('window-all-closed', () => {
@@ -506,6 +508,92 @@ ipcMain.handle('delete-anexo', async (event, { anexoId }) => {
   } catch (e) {
     return { success: false, error: e.message };
   }
+});
+
+// --- Auto Updater ---
+function setupAutoUpdater() {
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('checking-for-update', () => {
+    console.log('[UPDATE] Checking for updates...');
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    console.log('[UPDATE] Update available:', info.version);
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', {
+        status: 'available',
+        version: info.version,
+        message: `Nova versão ${info.version} disponível. Baixando...`,
+      });
+    }
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    console.log('[UPDATE] App is up to date.');
+  });
+
+  autoUpdater.on('download-progress', (progress) => {
+    console.log(`[UPDATE] Download: ${Math.round(progress.percent)}%`);
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', {
+        status: 'downloading',
+        percent: Math.round(progress.percent),
+        message: `Baixando atualização: ${Math.round(progress.percent)}%`,
+      });
+    }
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('[UPDATE] Update downloaded:', info.version);
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', {
+        status: 'downloaded',
+        version: info.version,
+        message: `Atualização ${info.version} pronta! Reinicie o app para aplicar.`,
+      });
+    }
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Atualização Disponível',
+      message: `A versão ${info.version} foi baixada. O app será reiniciado para aplicar a atualização.`,
+      buttons: ['Reiniciar Agora', 'Mais Tarde'],
+      defaultId: 0,
+    }).then((result) => {
+      if (result.response === 0) {
+        autoUpdater.quitAndInstall(false, true);
+      }
+    });
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.error('[UPDATE] Error:', err.message);
+  });
+
+  // Check for updates after a short delay to not slow down startup
+  setTimeout(() => {
+    autoUpdater.checkForUpdates().catch((err) => {
+      console.error('[UPDATE] Check failed:', err.message);
+    });
+  }, 5000);
+}
+
+ipcMain.handle('check-for-updates', async () => {
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    return { success: true, version: result?.updateInfo?.version };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('install-update', () => {
+  autoUpdater.quitAndInstall(false, true);
+});
+
+ipcMain.handle('get-app-version', () => {
+  return app.getVersion();
 });
 
 ipcMain.handle('window-minimize', () => mainWindow.minimize());
