@@ -1005,6 +1005,33 @@ async function setupActivation() {
   }
 }
 
+function setupUpdateListener() {
+  if (!window.api.onUpdateStatus) return;
+  window.api.onUpdateStatus((data) => {
+    const banner = document.getElementById('update-banner');
+    const text = document.getElementById('update-text');
+    const installBtn = document.getElementById('update-install-btn');
+    if (!banner || !text) return;
+
+    text.textContent = data.message;
+    banner.classList.remove('hidden');
+
+    if (data.status === 'downloaded') {
+      installBtn.classList.remove('hidden');
+      installBtn.onclick = () => window.api.installUpdate();
+    } else {
+      installBtn.classList.add('hidden');
+    }
+  });
+
+  const closeBtn = document.getElementById('update-close-btn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      document.getElementById('update-banner').classList.add('hidden');
+    });
+  }
+}
+
 function showMainScreen() {
   document.getElementById('activation-screen').classList.add('hidden');
   document.getElementById('main-screen').classList.remove('hidden');
@@ -1012,6 +1039,7 @@ function showMainScreen() {
   setupNavigation();
   setupLanguage();
   startClock();
+  setupUpdateListener();
 
   // Show/hide prontuario nav based on role
   const navProntuario = document.getElementById('nav-prontuario');

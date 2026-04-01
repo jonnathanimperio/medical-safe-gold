@@ -2205,3 +2205,77 @@ body {
 .file-upload-input {
   display: none;
 }
+
+/* ========================================
+   Auto-Update Banner
+   ======================================== */
+.update-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  border-top: 1px solid var(--border-gold);
+  z-index: 10000;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.update-banner.hidden {
+  display: none;
+}
+
+.update-icon {
+  color: var(--gold);
+  font-size: 20px;
+}
+
+.update-text {
+  flex: 1;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.update-btn {
+  background: var(--gold);
+  color: #000;
+  border: none;
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: background 0.2s;
+}
+
+.update-btn:hover {
+  background: var(--gold-light);
+}
+
+.update-btn.hidden {
+  display: none;
+}
+
+.update-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.update-close-btn:hover {
+  color: var(--text-primary);
+}
