@@ -510,6 +510,43 @@ ipcMain.handle('delete-anexo', async (event, { anexoId }) => {
   }
 });
 
+// --- Confirmacao WhatsApp ---
+
+ipcMain.handle('create-confirmacao', async (event, data) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED' };
+  try {
+    const result = await apiCall('/confirmacoes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('list-confirmacoes', async (event, { clinicaId }) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED', data: [] };
+  try {
+    const result = await apiCall(`/confirmacoes/${encodeURIComponent(clinicaId)}`);
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message, data: [] };
+  }
+});
+
+ipcMain.handle('mark-confirmacao-enviado', async (event, { uuid }) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED' };
+  try {
+    const result = await apiCall(`/confirmacoes/${encodeURIComponent(uuid)}/enviar`, {
+      method: 'PATCH',
+    });
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
 // --- Auto Updater ---
 function setupAutoUpdater() {
   autoUpdater.autoDownload = true;
