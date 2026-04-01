@@ -8,6 +8,9 @@ let currentScreen = 0;
 let allAppointments = [];
 let userRole = 'doctor'; // 'doctor' or 'receptionist'
 let updateListenerRegistered = false;
+let allConfirmacoes = [];
+let alertsRefreshInterval = null;
+let doctorName = '';
 
 // --- UTC Date Parser (backend returns UTC without Z suffix) ---
 function parseUTCDate(dateStr) {
@@ -250,6 +253,23 @@ async function saveAppointment() {
 
     if (result.success) {
       showSnack(t('Agendamento Seguro e Salvo!'));
+      // Create confirmation record for WhatsApp link
+      if (whatsapp && dia && hora) {
+        try {
+          await window.api.createConfirmacao({
+            appointment_id: result.id || '',
+            patient_name: nome,
+            patient_whatsapp: whatsapp,
+            appointment_date: dia,
+            appointment_time: hora,
+            doctor_name: doctorName || 'Médico',
+            service: servico,
+            clinica_id: clinicaId,
+          });
+        } catch (ce) {
+          console.error('Confirmacao creation error:', ce);
+        }
+      }
       document.getElementById('input-nome').value = '';
       document.getElementById('input-servico').value = '';
       document.getElementById('input-dia').value = '';
@@ -557,8 +577,118 @@ async function performSearch(container) {
 // ========================================
 // Screen 4: Alerts
 // ========================================
+async function fetchConfirmacoes() {
+  if (!clinicaId) return [];
+  try {
+    const result = await window.api.listConfirmacoes({ clinicaId });
+    if (result.success) {
+      allConfirmacoes = result.data || [];
+      return allConfirmacoes;
+    }
+  } catch (e) {
+    console.error('Fetch confirmacoes error:', e);
+  }
+  return [];
+}
+
+function getConfirmationForAppointment(appointment) {
+  return allConfirmacoes.find(c =>
+    c.patient_name === appointment.nome &&
+    c.appointment_date === appointment.dia &&
+    c.appointment_time === appointment.hora
+  );
+}
+
+function getStatusColor(status) {
+  switch (status) {
+    case 'Confirmado': return 'var(--success)';
+    case 'Cancelado': return 'var(--danger)';
+    case 'Enviado': return '#f0a030';
+    default: return 'var(--border-subtle)';
+  }
+}
+
+function getStatusLabel(status) {
+  switch (status) {
+    case 'Confirmado': return t('CONFIRMADO');
+    case 'Cancelado': return t('CANCELADO');
+    case 'Enviado': return t('AGUARDANDO');
+    default: return t('PENDENTE');
+  }
+}
+
+function getStatusIcon(status) {
+  switch (status) {
+    case 'Confirmado': return 'check_circle';
+    case 'Cancelado': return 'cancel';
+    case 'Enviado': return 'hourglass_top';
+    default: return 'radio_button_unchecked';
+  }
+}
+
+function formatWhatsAppNumber(whatsapp) {
+  const digits = (whatsapp || '').replace(/\D/g, '');
+  if (digits.startsWith('55')) return digits;
+  return '55' + digits;
+}
+
+async function enviarZap(appointment, confirmacao) {
+  const BACKEND_URL = 'https://web-production-2043d.up.railway.app';
+  let uuid = confirmacao ? confirmacao.uuid : null;
+  // If no confirmation record exists yet, create one
+  if (!uuid && appointment.whatsapp) {
+    try {
+      const res = await window.api.createConfirmacao({
+        appointment_id: appointment.id || '',
+        patient_name: appointment.nome,
+        patient_whatsapp: appointment.whatsapp,
+        appointment_date: appointment.dia,
+        appointment_time: appointment.hora,
+        doctor_name: doctorName || 'Médico',
+        service: appointment.servico,
+        clinica_id: clinicaId,
+      });
+      if (res.success) {
+        uuid = res.uuid;
+      }
+    } catch (e) {
+      console.error('Create confirmacao error:', e);
+    }
+  }
+  if (!uuid) {
+    showSnack(t('Erro ao gerar link de confirmação.'), true);
+    return;
+  }
+  // Mark as Enviado
+  try {
+    await window.api.markConfirmacaoEnviado({ uuid });
+  } catch (e) {
+    console.error('Mark enviado error:', e);
+  }
+  // Build wa.me link
+  const phone = formatWhatsAppNumber(appointment.whatsapp);
+  const confirmUrl = `${BACKEND_URL}/confirmar/${uuid}`;
+  const msg = `Olá ${appointment.nome}, confirmamos sua consulta para ${appointment.dia} às ${appointment.hora}?\n\nClique para confirmar: ${confirmUrl}`;
+  const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+  // Open in default browser
+  window.open(waUrl, '_blank');
+  // Refresh the alerts view
+  await fetchConfirmacoes();
+  const content = document.getElementById('main-content');
+  if (content && currentScreen === 4) {
+    await showAlerts(content);
+  }
+}
+
 async function showAlerts(container) {
   await fetchAppointments();
+  await fetchConfirmacoes();
+
+  // Clear any previous refresh interval
+  if (alertsRefreshInterval) {
+    clearInterval(alertsRefreshInterval);
+    alertsRefreshInterval = null;
+  }
 
   // Get next 7 days
   const today = new Date();
@@ -619,27 +749,86 @@ async function showAlerts(container) {
 
   const list = document.getElementById('week-appointments');
   weekAppointments.forEach((p, i) => {
+    const conf = getConfirmationForAppointment(p);
+    const status = conf ? conf.status : 'Pendente';
+    const statusColor = getStatusColor(status);
+    const statusLabel = getStatusLabel(status);
+    const statusIcon = getStatusIcon(status);
+    const hasWhatsapp = !!(p.whatsapp && p.whatsapp.trim());
+    const showZapBtn = hasWhatsapp && status !== 'Confirmado' && status !== 'Cancelado';
+
     const card = document.createElement('div');
     card.className = 'alert-appointment stagger-item';
     card.style.animationDelay = `${i * 0.05}s`;
+    card.style.borderLeft = `4px solid ${statusColor}`;
     card.innerHTML = `
       <div class="alert-appointment-info">
         <h4>${(p.nome || '').toUpperCase()}</h4>
         <p>${(p.servico || t('PROCEDIMENTO')).toUpperCase()}</p>
+        <div class="alert-confirmation-status" style="color: ${statusColor}; margin-top: 6px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+          <span class="material-icons-round" style="font-size: 16px;">${statusIcon}</span>
+          <span>${statusLabel}</span>
+        </div>
       </div>
-      <div class="alert-appointment-time">
-        <div class="meta-row">
-          <span class="material-icons-round">calendar_today</span>
-          <span>${p.dia}</span>
+      <div class="alert-appointment-actions">
+        <div class="alert-appointment-time">
+          <div class="meta-row">
+            <span class="material-icons-round">calendar_today</span>
+            <span>${p.dia}</span>
+          </div>
+          <div class="meta-row">
+            <span class="material-icons-round">schedule</span>
+            <span>${p.hora}</span>
+          </div>
         </div>
-        <div class="meta-row">
-          <span class="material-icons-round">schedule</span>
-          <span>${p.hora}</span>
-        </div>
+        ${showZapBtn ? `<button class="btn-zap" data-idx="${i}" title="${t('Enviar confirmação via WhatsApp')}">
+          <span class="material-icons-round" style="font-size: 18px;">send</span>
+          <span>${t('Enviar Zap')}</span>
+        </button>` : ''}
+        ${!hasWhatsapp ? `<div class="no-whatsapp-hint" style="color: var(--text-muted); font-size: 11px; margin-top: 4px;">${t('Sem WhatsApp')}</div>` : ''}
       </div>
     `;
     list.appendChild(card);
+
+    // Add click handler for Zap button
+    if (showZapBtn) {
+      const btn = card.querySelector('.btn-zap');
+      if (btn) {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          enviarZap(p, conf);
+        });
+      }
+    }
   });
+
+  // Auto-refresh confirmations every 30 seconds
+  alertsRefreshInterval = setInterval(async () => {
+    if (currentScreen !== 4) {
+      clearInterval(alertsRefreshInterval);
+      alertsRefreshInterval = null;
+      return;
+    }
+    await fetchConfirmacoes();
+    // Update status badges without full re-render
+    const cards = document.querySelectorAll('.alert-appointment');
+    cards.forEach((card, i) => {
+      if (i < weekAppointments.length) {
+        const p = weekAppointments[i];
+        const conf = getConfirmationForAppointment(p);
+        const status = conf ? conf.status : 'Pendente';
+        const statusColor = getStatusColor(status);
+        const statusLabel = getStatusLabel(status);
+        const statusIcon = getStatusIcon(status);
+        card.style.borderLeft = `4px solid ${statusColor}`;
+        const statusEl = card.querySelector('.alert-confirmation-status');
+        if (statusEl) {
+          statusEl.style.color = statusColor;
+          statusEl.innerHTML = `<span class="material-icons-round" style="font-size: 16px;">${statusIcon}</span><span>${statusLabel}</span>`;
+        }
+      }
+    });
+  }, 30000);
 }
 
 // ========================================
@@ -835,9 +1024,11 @@ async function setupActivation() {
       if (result.success) {
         clinicaId = result.clinicaId || email;
         userRole = result.role || 'doctor';
+        doctorName = email.split('@')[0].replace(/[._-]/g, ' ');
         localStorage.setItem('clinica_id', clinicaId);
         localStorage.setItem('user_email', email);
         localStorage.setItem('user_role', userRole);
+        localStorage.setItem('doctor_name', doctorName);
         showSnack(t('Login realizado com sucesso!'));
         showMainScreen();
       } else {
@@ -893,9 +1084,11 @@ async function setupActivation() {
       if (result.success) {
         clinicaId = result.clinicaId || email;
         userRole = result.role || role;
+        doctorName = email.split('@')[0].replace(/[._-]/g, ' ');
         localStorage.setItem('clinica_id', clinicaId);
         localStorage.setItem('user_email', email);
         localStorage.setItem('user_role', userRole);
+        localStorage.setItem('doctor_name', doctorName);
         showSnack(t('Conta criada com sucesso!'));
         showMainScreen();
       } else {
@@ -1072,6 +1265,7 @@ function setupWindowControls() {
 // ========================================
 document.addEventListener('DOMContentLoaded', () => {
   setupWindowControls();
+  doctorName = localStorage.getItem('doctor_name') || '';
   setupActivation();
   // Always show login screen - user must authenticate to get JWT + encryption key
 });
