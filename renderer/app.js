@@ -686,7 +686,7 @@ async function enviarZap(appointment, confirmacao) {
   }
   // Refresh the alerts view
   await fetchConfirmacoes();
-  const content = document.getElementById('main-content');
+  const content = document.getElementById('content-area');
   if (content && currentScreen === 4) {
     await showAlerts(content);
   }

@@ -247,7 +247,7 @@ ipcMain.handle('save-appointment', async (event, { nome, servico, dia, hora, cpf
       body: JSON.stringify({ payload: encryptedPayload, clinica_id: clinicaId }),
     });
     console.log('[SAVE] API response:', JSON.stringify(result));
-    return { success: result.success, error: result.error || null };
+    return { success: result.success, id: result.id || null, error: result.error || null };
   } catch (e) {
     console.error('[SAVE] Error:', e.message, e.stack);
     return { success: false, error: e.message };
@@ -537,6 +537,10 @@ ipcMain.handle('list-confirmacoes', async (event, { clinicaId }) => {
 
 ipcMain.handle('open-external-url', async (event, { url }) => {
   try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') {
+      return { success: false, error: 'Only HTTPS URLs are allowed' };
+    }
     await shell.openExternal(url);
     return { success: true };
   } catch (e) {
