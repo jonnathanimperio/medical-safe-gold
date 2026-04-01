@@ -20,6 +20,12 @@ contextBridge.exposeInMainWorld('api', {
   listAnexos: (data) => ipcRenderer.invoke('list-anexos', data),
   getAnexo: (data) => ipcRenderer.invoke('get-anexo', data),
   deleteAnexo: (data) => ipcRenderer.invoke('delete-anexo', data),
+  // Confirmacao WhatsApp
+  createConfirmacao: (data) => ipcRenderer.invoke('create-confirmacao', data),
+  listConfirmacoes: (data) => ipcRenderer.invoke('list-confirmacoes', data),
+  markConfirmacaoEnviado: (data) => ipcRenderer.invoke('mark-confirmacao-enviado', data),
+  openExternalUrl: (data) => ipcRenderer.invoke('open-external-url', data),
+  getApiUrl: () => ipcRenderer.invoke('get-api-url'),
   windowMinimize: () => ipcRenderer.invoke('window-minimize'),
   windowMaximize: () => ipcRenderer.invoke('window-maximize'),
   windowClose: () => ipcRenderer.invoke('window-close'),

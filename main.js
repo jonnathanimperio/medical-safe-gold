@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const crypto = require('crypto');
 const os = require('os');
@@ -247,7 +247,7 @@ ipcMain.handle('save-appointment', async (event, { nome, servico, dia, hora, cpf
       body: JSON.stringify({ payload: encryptedPayload, clinica_id: clinicaId }),
     });
     console.log('[SAVE] API response:', JSON.stringify(result));
-    return { success: result.success, error: result.error || null };
+    return { success: result.success, id: result.id || null, error: result.error || null };
   } catch (e) {
     console.error('[SAVE] Error:', e.message, e.stack);
     return { success: false, error: e.message };
@@ -503,6 +503,58 @@ ipcMain.handle('delete-anexo', async (event, { anexoId }) => {
   try {
     const result = await apiCall(`/prontuarios/anexo/${encodeURIComponent(anexoId)}`, {
       method: 'DELETE',
+    });
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+// --- Confirmacao WhatsApp ---
+
+ipcMain.handle('create-confirmacao', async (event, data) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED' };
+  try {
+    const result = await apiCall('/confirmacoes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('list-confirmacoes', async (event, { clinicaId }) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED', data: [] };
+  try {
+    const result = await apiCall(`/confirmacoes/${encodeURIComponent(clinicaId)}`);
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message, data: [] };
+  }
+});
+
+ipcMain.handle('open-external-url', async (event, { url }) => {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') {
+      return { success: false, error: 'Only HTTPS URLs are allowed' };
+    }
+    await shell.openExternal(url);
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('get-api-url', () => API_URL);
+
+ipcMain.handle('mark-confirmacao-enviado', async (event, { uuid }) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED' };
+  try {
+    const result = await apiCall(`/confirmacoes/${encodeURIComponent(uuid)}/enviar`, {
+      method: 'PATCH',
     });
     return result;
   } catch (e) {
