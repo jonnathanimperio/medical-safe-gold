@@ -263,7 +263,7 @@ ipcMain.handle('delete-appointment', async (event, { id, clinicaId }) => {
       method: 'DELETE',
     });
     console.log('[DELETE] Result:', JSON.stringify(result));
-    return { success: result.success || false, error: result.error || null };
+    return { success: result.success || false, error: result.error || result.detail || null };
   } catch (e) {
     console.error('[DELETE] Error:', e.message);
     return { success: false, error: e.message };
