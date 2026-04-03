@@ -400,7 +400,7 @@
       </a>
     </div>
     <div class="download-info">
-      <span data-t="dl-info">Windows 10/11</span> &bull; v1.0.0 &bull; 74 MB &bull; <span data-t="dl-free">Instalacao gratuita</span>
+      <span data-t="dl-info">Windows 10/11</span> &bull; v1.1.0 &bull; 74 MB &bull; <span data-t="dl-free">Instalacao gratuita</span>
     </div>
     <div class="trust-badges">
       <div class="trust-badge"><span class="material-icons-round">lock</span><span data-t="trust-1">Criptografia AES-256</span></div>
@@ -415,46 +415,15 @@
     <div class="app-window">
       <div class="app-titlebar">
         <div class="app-dot red"></div><div class="app-dot yellow"></div><div class="app-dot green"></div>
-        <div class="app-titlebar-text">Medical Safe Gold</div>
+        <div class="app-titlebar-text">Medical Safe Gold - Demo</div>
         <div style="width:52px;"></div>
       </div>
-      <div class="app-content">
-        <div class="app-sidebar">
-          <div class="app-sidebar-header">
-            <div class="app-sidebar-logo"><span class="material-icons-round">shield</span></div>
-            <div class="app-sidebar-name">Medical Safe Gold</div>
-          </div>
-          <div class="app-menu-item active"><span class="material-icons-round">calendar_month</span><span data-t="menu-appointments">Consultas</span></div>
-          <div class="app-menu-item"><span class="material-icons-round">description</span><span data-t="menu-prontuario">Prontuario</span></div>
-          <div class="app-menu-item"><span class="material-icons-round">person_search</span><span data-t="menu-search">Pesquisar</span></div>
-          <div class="app-menu-item"><span class="material-icons-round">notifications</span><span data-t="menu-alerts">Alertas</span></div>
-          <div class="app-menu-item"><span class="material-icons-round">settings</span><span data-t="menu-settings">Configuracoes</span></div>
-          <div class="app-menu-item"><span class="material-icons-round">vpn_key</span><span data-t="menu-license">Licenca</span></div>
-        </div>
-        <div class="app-main">
-          <div class="app-main-header">
-            <div class="app-main-title" data-t="main-title">Consultas de Hoje</div>
-            <div class="app-main-date">28/03 - 14:32:05</div>
-          </div>
-          <div class="app-card-row">
-            <div class="app-stat-card"><div class="app-stat-label" data-t="stat-today">HOJE</div><div class="app-stat-value">8</div></div>
-            <div class="app-stat-card"><div class="app-stat-label" data-t="stat-week">SEMANA</div><div class="app-stat-value">34</div></div>
-            <div class="app-stat-card"><div class="app-stat-label" data-t="stat-confirmed">CONFIRMADOS</div><div class="app-stat-value green">6</div></div>
-          </div>
-          <div class="app-appointment-list">
-            <div class="app-appointment">
-              <div class="app-apt-info"><div class="app-apt-avatar"><span class="material-icons-round">person</span></div><div><div class="app-apt-name">Maria Silva</div><div class="app-apt-type" data-t="apt-type-1">Consulta de rotina</div></div></div>
-              <div class="app-apt-time">09:00</div><div class="app-apt-badge" data-t="apt-confirmed">CONFIRMADO</div>
-            </div>
-            <div class="app-appointment">
-              <div class="app-apt-info"><div class="app-apt-avatar"><span class="material-icons-round">person</span></div><div><div class="app-apt-name">Joao Santos</div><div class="app-apt-type" data-t="apt-type-2">Exame laboratorial</div></div></div>
-              <div class="app-apt-time">10:30</div><div class="app-apt-badge" data-t="apt-confirmed">CONFIRMADO</div>
-            </div>
-            <div class="app-appointment">
-              <div class="app-apt-info"><div class="app-apt-avatar"><span class="material-icons-round">person</span></div><div><div class="app-apt-name">Ana Oliveira</div><div class="app-apt-type" data-t="apt-type-3">Retorno medico</div></div></div>
-              <div class="app-apt-time">14:00</div><div class="app-apt-badge" style="background:rgba(212,175,55,0.1);color:var(--gold);" data-t="apt-pending">PENDENTE</div>
-            </div>
-          </div>
+      <div style="position:relative;background:#0a0a0f;">
+        <video id="demo-video" autoplay muted loop playsinline style="width:100%;display:block;border-radius:0 0 16px 16px;">
+          <source src="https://github.com/jonnathanimperio/medical-safe-gold/releases/download/v1.1.0/demo-video.mp4" type="video/mp4">
+        </video>
+        <div id="video-play-overlay" onclick="document.getElementById('demo-video').play();this.style.display='none';" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(0,0,0,0.3);border-radius:0 0 16px 16px;transition:opacity 0.3s;">
+          <span class="material-icons-round" style="font-size:64px;color:var(--gold);filter:drop-shadow(0 2px 8px rgba(0,0,0,0.5));">play_circle_filled</span>
         </div>
       </div>
     </div>
