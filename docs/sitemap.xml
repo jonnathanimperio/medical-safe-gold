@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://medicalsafegold.com/</loc>
+    <lastmod>2026-04-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://medicalsafegold.com/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://medicalsafegold.com/?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://medicalsafegold.com/?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://medicalsafegold.com/?lang=de"/>
+  </url>
+  <url>
+    <loc>https://medicalsafegold.com/privacy.html</loc>
+    <lastmod>2026-04-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://medicalsafegold.com/EULA_pt.md</loc>
+    <lastmod>2026-04-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://medicalsafegold.com/EULA_en.md</loc>
+    <lastmod>2026-04-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://medicalsafegold.com/EULA_es.md</loc>
+    <lastmod>2026-04-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://medicalsafegold.com/EULA_de.md</loc>
+    <lastmod>2026-04-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+</urlset>
