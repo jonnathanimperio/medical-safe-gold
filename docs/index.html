@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18060260743"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'AW-18060260743');
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistema para Clínica Médica | Agendamento e Prontuário Eletrônico - Medical Safe Gold</title>
@@ -1070,6 +1078,15 @@
 
     document.getElementById('checkout-email').addEventListener('keypress', function(e) {
       if (e.key === 'Enter') submitCheckout();
+    });
+
+    function trackDownload() {
+      if (typeof gtag === 'function') {
+        gtag('event', 'Medical_safe_gold', { 'transport_type': 'beacon' });
+      }
+    }
+    document.querySelectorAll('.btn-download, .nav-download-btn').forEach(function(btn) {
+      btn.addEventListener('click', trackDownload);
     });
   </script>
 </body>
