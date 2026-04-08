@@ -1082,7 +1082,7 @@
 
     function trackDownload() {
       if (typeof gtag === 'function') {
-        gtag('event', 'Medical_safe_gold');
+        gtag('event', 'Medical_safe_gold', { 'transport_type': 'beacon' });
       }
     }
     document.querySelectorAll('.btn-download, .nav-download-btn').forEach(function(btn) {
