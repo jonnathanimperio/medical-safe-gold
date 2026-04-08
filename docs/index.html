@@ -1080,9 +1080,20 @@
       if (e.key === 'Enter') submitCheckout();
     });
 
-    function trackDownload() {
+    function trackDownload(e) {
+      var link = e.currentTarget;
+      var url = link.href;
       if (typeof gtag === 'function') {
-        gtag('event', 'Medical_safe_gold', { 'transport_type': 'beacon' });
+        e.preventDefault();
+        var navigated = false;
+        function navigate() {
+          if (!navigated) { navigated = true; window.location.href = url; }
+        }
+        gtag('event', 'Medical_safe_gold', {
+          'transport_type': 'beacon',
+          'event_callback': navigate
+        });
+        setTimeout(navigate, 500);
       }
     }
     document.querySelectorAll('.btn-download, .nav-download-btn').forEach(function(btn) {
