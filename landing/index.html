@@ -1069,6 +1069,15 @@
     document.getElementById('checkout-email').addEventListener('keypress', function(e) {
       if (e.key === 'Enter') submitCheckout();
     });
+
+    function trackDownload() {
+      if (typeof gtag === 'function') {
+        gtag('event', 'Medical_safe_gold');
+      }
+    }
+    document.querySelectorAll('.btn-download, .nav-download-btn').forEach(function(btn) {
+      btn.addEventListener('click', trackDownload);
+    });
   </script>
 </body>
 </html>
