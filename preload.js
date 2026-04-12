@@ -20,6 +20,15 @@ contextBridge.exposeInMainWorld('api', {
   listAnexos: (data) => ipcRenderer.invoke('list-anexos', data),
   getAnexo: (data) => ipcRenderer.invoke('get-anexo', data),
   deleteAnexo: (data) => ipcRenderer.invoke('delete-anexo', data),
+  // Prontuario V4
+  createEvolucao: (data) => ipcRenderer.invoke('create-evolucao', data),
+  listEvolucoes: (data) => ipcRenderer.invoke('list-evolucoes', data),
+  createExame: (data) => ipcRenderer.invoke('create-exame', data),
+  listExames: (data) => ipcRenderer.invoke('list-exames', data),
+  updateExame: (data) => ipcRenderer.invoke('update-exame', data),
+  getCid10: (data) => ipcRenderer.invoke('get-cid10', data),
+  createRetificacao: (data) => ipcRenderer.invoke('create-retificacao', data),
+  verifyProntuario: (data) => ipcRenderer.invoke('verify-prontuario', data),
   // Confirmacao WhatsApp
   createConfirmacao: (data) => ipcRenderer.invoke('create-confirmacao', data),
   listConfirmacoes: (data) => ipcRenderer.invoke('list-confirmacoes', data),
