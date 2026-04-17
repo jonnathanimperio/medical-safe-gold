@@ -1825,3 +1825,68 @@ body {
   opacity: 0;
   animation: fadeIn 0.3s ease-out forwards;
 }
+
+
+/* ========================================
+   Pricing Section Fixes
+   ======================================== */
+.pricing-price {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--gold);
+  line-height: 1.2;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+
+.pricing-price span {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  display: inline;
+  margin-left: 4px;
+}
+
+.pricing-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  transition: var(--transition);
+}
+
+.pricing-card:hover {
+  border-color: var(--border-gold);
+  background: var(--bg-card-hover);
+}
+
+.pricing-card.featured {
+  border-color: var(--gold);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.15);
+}
+
+.pricing-features {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pricing-features li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.pricing-features .material-icons-round {
+  font-size: 18px;
+  color: var(--success);
+  flex-shrink: 0;
+}
