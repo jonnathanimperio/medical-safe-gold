@@ -55,6 +55,12 @@ function showSnack(text, isError = false) {
   const snackText = document.getElementById('snackbar-text');
   const snackIcon = document.getElementById('snackbar-icon');
 
+  // Verificar se os elementos existem antes de usar
+  if (!snackbar || !snackText || !snackIcon) {
+    console.error('Snackbar elements not found');
+    return;
+  }
+
   snackText.textContent = text;
   snackIcon.textContent = isError ? 'error_outline' : 'check_circle';
   snackbar.className = isError ? 'snackbar show error' : 'snackbar show';
