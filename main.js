@@ -516,6 +516,27 @@ ipcMain.handle('delete-anexo', async (event, { anexoId }) => {
   }
 });
 
+// --- Subscription Status Check ---
+ipcMain.handle('check-subscription-status', async () => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED' };
+  try {
+    const result = await apiCall('/subscription/status', {
+      method: 'GET',
+    });
+    return result;
+  } catch (e) {
+    return { success: false, error: 'API_ERROR' };
+  }
+});
+
+// --- Open External URL (for renewal) ---
+ipcMain.handle('open-external-url', async (event, { url }) => {
+  try {
+    // Only allow https URLs to prevent arbitrary protocol execution
+    if (!url || !url.startsWith('https://')) {
+      return { success: false, error: 'INVALID_URL' };
+    }
+    const { shell } = require('electron');
 
 // --- Prontuario V4: Evolucoes ---
 
@@ -675,6 +696,9 @@ ipcMain.handle('open-external-url', async (event, { url }) => {
     return { success: false, error: e.message };
   }
 });
+
+// --- Get API URL for renderer ---
+ipcMain.handle('get-api-url', () => API_URL);
 
 ipcMain.handle('get-api-url', () => API_URL);
 

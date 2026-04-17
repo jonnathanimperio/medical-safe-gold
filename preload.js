@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('api', {
   listAnexos: (data) => ipcRenderer.invoke('list-anexos', data),
   getAnexo: (data) => ipcRenderer.invoke('get-anexo', data),
   deleteAnexo: (data) => ipcRenderer.invoke('delete-anexo', data),
+  checkSubscriptionStatus: () => ipcRenderer.invoke('check-subscription-status'),
   // Prontuario V4
   createEvolucao: (data) => ipcRenderer.invoke('create-evolucao', data),
   listEvolucoes: (data) => ipcRenderer.invoke('list-evolucoes', data),
