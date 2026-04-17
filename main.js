@@ -1,9 +1,10 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const crypto = require('crypto');
 const os = require('os');
 const fs = require('fs');
 const fernet = require('fernet');
+const { autoUpdater } = require('electron-updater');
 
 // --- Backend API Configuration ---
 // Default API URL - override via config.json in the app root directory
@@ -124,6 +125,7 @@ app.whenReady().then(async () => {
   loadConfig();
   await checkApiHealth();
   createWindow();
+  setupAutoUpdater();
 });
 
 app.on('window-all-closed', () => {
@@ -245,7 +247,7 @@ ipcMain.handle('save-appointment', async (event, { nome, servico, dia, hora, cpf
       body: JSON.stringify({ payload: encryptedPayload, clinica_id: clinicaId }),
     });
     console.log('[SAVE] API response:', JSON.stringify(result));
-    return { success: result.success, error: result.error || null };
+    return { success: result.success, id: result.id || null, error: result.error || null };
   } catch (e) {
     console.error('[SAVE] Error:', e.message, e.stack);
     return { success: false, error: e.message };
@@ -261,7 +263,7 @@ ipcMain.handle('delete-appointment', async (event, { id, clinicaId }) => {
       method: 'DELETE',
     });
     console.log('[DELETE] Result:', JSON.stringify(result));
-    return { success: result.success || false, error: result.error || null };
+    return { success: result.success || false, error: result.error || result.detail || null };
   } catch (e) {
     console.error('[DELETE] Error:', e.message);
     return { success: false, error: e.message };
@@ -320,11 +322,11 @@ ipcMain.handle('save-prontuario', async (event, data) => {
   if (!jwtToken || !userFernetSecret) return { success: false, error: 'NOT_AUTHENTICATED' };
   try {
     // Encrypt sensitive medical fields before sending
-    const sensitiveFields = { sintomas: data.sintomas, diagnostico: data.diagnostico, tratamento: data.tratamento, observacoes: data.observacoes || '' };
+    const sensitiveFields = { sintomas: data.sintomas, diagnostico: data.diagnostico, tratamento: data.tratamento, observacoes: data.observacoes || '', historico_clinico: data.historico_clinico || '', anamnese: data.anamnese || '', prescricoes: data.prescricoes || '' };
     const encryptedPayload = encryptData(sensitiveFields);
     const result = await apiCall('/prontuarios', {
       method: 'POST',
-      body: JSON.stringify({ ...data, sintomas: encryptedPayload, diagnostico: '', tratamento: '', observacoes: '', encrypted: true }),
+      body: JSON.stringify({ ...data, sintomas: encryptedPayload, diagnostico: '', tratamento: '', observacoes: '', historico_clinico: '', anamnese: '', prescricoes: '', encrypted: true }),
     });
     return result;
   } catch (e) {
@@ -346,6 +348,9 @@ ipcMain.handle('search-prontuarios', async (event, { query }) => {
               doc.diagnostico = decrypted.diagnostico || '';
               doc.tratamento = decrypted.tratamento || '';
               doc.observacoes = decrypted.observacoes || '';
+              doc.historico_clinico = decrypted.historico_clinico || '';
+              doc.anamnese = decrypted.anamnese || '';
+              doc.prescricoes = decrypted.prescricoes || '';
             }
           } catch (decErr) {
             console.error('[PRONTUARIO] Decryption failed for doc:', doc.id, decErr.message);
@@ -374,6 +379,9 @@ ipcMain.handle('get-prontuarios', async (event, { patientId }) => {
               doc.diagnostico = decrypted.diagnostico || '';
               doc.tratamento = decrypted.tratamento || '';
               doc.observacoes = decrypted.observacoes || '';
+              doc.historico_clinico = decrypted.historico_clinico || '';
+              doc.anamnese = decrypted.anamnese || '';
+              doc.prescricoes = decrypted.prescricoes || '';
             }
           } catch (decErr) {
             console.error('[PRONTUARIO] Decryption failed for doc:', doc.id, decErr.message);
@@ -391,11 +399,11 @@ ipcMain.handle('update-prontuario', async (event, { id, data }) => {
   if (!jwtToken || !userFernetSecret) return { success: false, error: 'NOT_AUTHENTICATED' };
   try {
     // Encrypt sensitive medical fields before sending
-    const sensitiveFields = { sintomas: data.sintomas, diagnostico: data.diagnostico, tratamento: data.tratamento, observacoes: data.observacoes || '' };
+    const sensitiveFields = { sintomas: data.sintomas, diagnostico: data.diagnostico, tratamento: data.tratamento, observacoes: data.observacoes || '', historico_clinico: data.historico_clinico || '', anamnese: data.anamnese || '', prescricoes: data.prescricoes || '' };
     const encryptedPayload = encryptData(sensitiveFields);
     const result = await apiCall(`/prontuarios/${encodeURIComponent(id)}`, {
       method: 'PUT',
-      body: JSON.stringify({ sintomas: encryptedPayload, diagnostico: '', tratamento: '', observacoes: '', encrypted: true }),
+      body: JSON.stringify({ ...data, sintomas: encryptedPayload, diagnostico: '', tratamento: '', observacoes: '', historico_clinico: '', anamnese: '', prescricoes: '', encrypted: true }),
     });
     return result;
   } catch (e) {
@@ -529,6 +537,159 @@ ipcMain.handle('open-external-url', async (event, { url }) => {
       return { success: false, error: 'INVALID_URL' };
     }
     const { shell } = require('electron');
+
+// --- Prontuario V4: Evolucoes ---
+
+ipcMain.handle('create-evolucao', async (event, { prontuarioId, data }) => {
+  if (!jwtToken || !userFernetSecret) return { success: false, error: 'NOT_AUTHENTICATED' };
+  try {
+    // Encrypt sensitive evolution text
+    const sensitiveFields = { texto: data.texto, tipo: data.tipo || 'evolucao' };
+    const encryptedPayload = encryptData(sensitiveFields);
+    const result = await apiCall(`/prontuarios/${encodeURIComponent(prontuarioId)}/evolucoes`, {
+      method: 'POST',
+      body: JSON.stringify({ texto: encryptedPayload, tipo: data.tipo || 'evolucao', encrypted: true }),
+    });
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('list-evolucoes', async (event, { prontuarioId }) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED', data: [] };
+  try {
+    const result = await apiCall(`/prontuarios/${encodeURIComponent(prontuarioId)}/evolucoes`);
+    if (result.success && result.data && userFernetSecret) {
+      for (const doc of result.data) {
+        if (doc.encrypted && doc.texto) {
+          try {
+            const decrypted = decryptData(doc.texto);
+            if (decrypted) {
+              doc.texto = decrypted.texto || '';
+              doc.tipo = decrypted.tipo || doc.tipo || '';
+            }
+          } catch (decErr) {
+            console.error('[EVOLUCAO] Decryption failed:', decErr.message);
+          }
+        }
+      }
+    }
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message, data: [] };
+  }
+});
+
+// --- Prontuario V4: Exames ---
+
+ipcMain.handle('create-exame', async (event, { prontuarioId, data }) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED' };
+  try {
+    const result = await apiCall(`/prontuarios/${encodeURIComponent(prontuarioId)}/exames`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('list-exames', async (event, { prontuarioId }) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED', data: [] };
+  try {
+    const result = await apiCall(`/prontuarios/${encodeURIComponent(prontuarioId)}/exames`);
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message, data: [] };
+  }
+});
+
+ipcMain.handle('update-exame', async (event, { prontuarioId, exameId, data }) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED' };
+  try {
+    const result = await apiCall(`/prontuarios/${encodeURIComponent(prontuarioId)}/exames/${encodeURIComponent(exameId)}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+// --- Prontuario V4: CID-10 ---
+
+ipcMain.handle('get-cid10', async (event, { query }) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED', data: [] };
+  try {
+    const q = query ? `?q=${encodeURIComponent(query)}` : '';
+    const result = await apiCall(`/cid10${q}`);
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message, data: [] };
+  }
+});
+
+// --- Prontuario V4: Retificacao ---
+
+ipcMain.handle('create-retificacao', async (event, { prontuarioId, data }) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED' };
+  try {
+    const result = await apiCall(`/prontuarios/${encodeURIComponent(prontuarioId)}/retificacao`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+// --- Prontuario V4: Verify Integrity ---
+
+ipcMain.handle('verify-prontuario', async (event, { prontuarioId }) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED' };
+  try {
+    const result = await apiCall(`/prontuarios/${encodeURIComponent(prontuarioId)}/verify`);
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+// --- Confirmacao WhatsApp ---
+
+ipcMain.handle('create-confirmacao', async (event, data) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED' };
+  try {
+    const result = await apiCall('/confirmacoes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('list-confirmacoes', async (event, { clinicaId }) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED', data: [] };
+  try {
+    const result = await apiCall(`/confirmacoes/${encodeURIComponent(clinicaId)}`);
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message, data: [] };
+  }
+});
+
+ipcMain.handle('open-external-url', async (event, { url }) => {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') {
+      return { success: false, error: 'Only HTTPS URLs are allowed' };
+    }
     await shell.openExternal(url);
     return { success: true };
   } catch (e) {
@@ -538,6 +699,108 @@ ipcMain.handle('open-external-url', async (event, { url }) => {
 
 // --- Get API URL for renderer ---
 ipcMain.handle('get-api-url', () => API_URL);
+
+ipcMain.handle('get-api-url', () => API_URL);
+
+ipcMain.handle('mark-confirmacao-enviado', async (event, { uuid }) => {
+  if (!jwtToken) return { success: false, error: 'NOT_AUTHENTICATED' };
+  try {
+    const result = await apiCall(`/confirmacoes/${encodeURIComponent(uuid)}/enviar`, {
+      method: 'PATCH',
+    });
+    return result;
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+// --- Auto Updater ---
+function setupAutoUpdater() {
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('checking-for-update', () => {
+    console.log('[UPDATE] Checking for updates...');
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    console.log('[UPDATE] Update available:', info.version);
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', {
+        status: 'available',
+        version: info.version,
+        message: `Nova versão ${info.version} disponível. Baixando...`,
+      });
+    }
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    console.log('[UPDATE] App is up to date.');
+  });
+
+  autoUpdater.on('download-progress', (progress) => {
+    console.log(`[UPDATE] Download: ${Math.round(progress.percent)}%`);
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', {
+        status: 'downloading',
+        percent: Math.round(progress.percent),
+        message: `Baixando atualização: ${Math.round(progress.percent)}%`,
+      });
+    }
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('[UPDATE] Update downloaded:', info.version);
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', {
+        status: 'downloaded',
+        version: info.version,
+        message: `Atualização ${info.version} pronta! Reinicie o app para aplicar.`,
+      });
+    }
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'Atualização Disponível',
+        message: `A versão ${info.version} foi baixada. O app será reiniciado para aplicar a atualização.`,
+        buttons: ['Reiniciar Agora', 'Mais Tarde'],
+        defaultId: 0,
+      }).then((result) => {
+        if (result.response === 0) {
+          autoUpdater.quitAndInstall(false, true);
+        }
+      });
+    }
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.error('[UPDATE] Error:', err.message);
+  });
+
+  // Check for updates after a short delay to not slow down startup
+  setTimeout(() => {
+    autoUpdater.checkForUpdates().catch((err) => {
+      console.error('[UPDATE] Check failed:', err.message);
+    });
+  }, 5000);
+}
+
+ipcMain.handle('check-for-updates', async () => {
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    return { success: true, version: result?.updateInfo?.version };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('install-update', () => {
+  autoUpdater.quitAndInstall(false, true);
+});
+
+ipcMain.handle('get-app-version', () => {
+  return app.getVersion();
+});
 
 ipcMain.handle('window-minimize', () => mainWindow.minimize());
 ipcMain.handle('window-maximize', () => {

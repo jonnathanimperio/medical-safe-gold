@@ -11,6 +11,20 @@ let subscriptionStatus = 'trial';
 let subscriptionPlan = null;
 let subscriptionExpires = null;
 let subscriptionCheckInterval = null;
+let updateListenerRegistered = false;
+let allConfirmacoes = [];
+let alertsRefreshInterval = null;
+let doctorName = '';
+
+// --- UTC Date Parser (backend returns UTC without Z suffix) ---
+function parseUTCDate(dateStr) {
+  if (!dateStr) return null;
+  // Ensure the ISO string is treated as UTC by appending Z if no timezone info
+  if (!dateStr.endsWith('Z') && !dateStr.includes('+') && !dateStr.includes('-', 10)) {
+    dateStr += 'Z';
+  }
+  return new Date(dateStr);
+}
 
 // --- HTML Escaping (XSS prevention) ---
 function escapeHtml(str) {
@@ -243,6 +257,23 @@ async function saveAppointment() {
 
     if (result.success) {
       showSnack(t('Agendamento Seguro e Salvo!'));
+      // Create confirmation record for WhatsApp link
+      if (whatsapp && dia && hora) {
+        try {
+          await window.api.createConfirmacao({
+            appointment_id: result.id || '',
+            patient_name: nome,
+            patient_whatsapp: whatsapp,
+            appointment_date: dia,
+            appointment_time: hora,
+            doctor_name: doctorName || 'Médico',
+            service: servico,
+            clinica_id: clinicaId,
+          });
+        } catch (ce) {
+          console.error('Confirmacao creation error:', ce);
+        }
+      }
       document.getElementById('input-nome').value = '';
       document.getElementById('input-servico').value = '';
       document.getElementById('input-dia').value = '';
@@ -550,8 +581,130 @@ async function performSearch(container) {
 // ========================================
 // Screen 4: Alerts
 // ========================================
+async function fetchConfirmacoes() {
+  if (!clinicaId) return [];
+  try {
+    const result = await window.api.listConfirmacoes({ clinicaId });
+    if (result.success) {
+      allConfirmacoes = result.data || [];
+      return allConfirmacoes;
+    }
+  } catch (e) {
+    console.error('Fetch confirmacoes error:', e);
+  }
+  return [];
+}
+
+function getConfirmationForAppointment(appointment) {
+  return allConfirmacoes.find(c =>
+    c.patient_name === appointment.nome &&
+    c.appointment_date === appointment.dia &&
+    c.appointment_time === appointment.hora
+  );
+}
+
+function getStatusColor(status) {
+  switch (status) {
+    case 'Confirmado': return 'var(--success)';
+    case 'Cancelado': return 'var(--danger)';
+    case 'Enviado': return '#f0a030';
+    default: return 'var(--border-subtle)';
+  }
+}
+
+function getStatusLabel(status) {
+  switch (status) {
+    case 'Confirmado': return t('CONFIRMADO');
+    case 'Cancelado': return t('CANCELADO');
+    case 'Enviado': return t('AGUARDANDO');
+    default: return t('PENDENTE');
+  }
+}
+
+function getStatusIcon(status) {
+  switch (status) {
+    case 'Confirmado': return 'check_circle';
+    case 'Cancelado': return 'cancel';
+    case 'Enviado': return 'hourglass_top';
+    default: return 'radio_button_unchecked';
+  }
+}
+
+function formatWhatsAppNumber(whatsapp) {
+  const digits = (whatsapp || '').replace(/\D/g, '');
+  if (digits.startsWith('55')) return digits;
+  return '55' + digits;
+}
+
+async function enviarZap(appointment, confirmacao) {
+  // Get backend URL from config (via IPC) instead of hardcoding
+  let backendUrl = 'https://web-production-2043d.up.railway.app';
+  try {
+    const apiUrl = await window.api.getApiUrl();
+    if (apiUrl) backendUrl = apiUrl;
+  } catch (e) {
+    console.error('Get API URL error:', e);
+  }
+  let uuid = confirmacao ? confirmacao.uuid : null;
+  // If no confirmation record exists yet, create one
+  if (!uuid && appointment.whatsapp) {
+    try {
+      const res = await window.api.createConfirmacao({
+        appointment_id: appointment.id || '',
+        patient_name: appointment.nome,
+        patient_whatsapp: appointment.whatsapp,
+        appointment_date: appointment.dia,
+        appointment_time: appointment.hora,
+        doctor_name: doctorName || 'Médico',
+        service: appointment.servico,
+        clinica_id: clinicaId,
+      });
+      if (res.success) {
+        uuid = res.uuid;
+      }
+    } catch (e) {
+      console.error('Create confirmacao error:', e);
+    }
+  }
+  if (!uuid) {
+    showSnack(t('Erro ao gerar link de confirmação.'), true);
+    return;
+  }
+  // Mark as Enviado
+  try {
+    await window.api.markConfirmacaoEnviado({ uuid });
+  } catch (e) {
+    console.error('Mark enviado error:', e);
+  }
+  // Build wa.me link
+  const phone = formatWhatsAppNumber(appointment.whatsapp);
+  const confirmUrl = `${backendUrl}/confirmar/${uuid}`;
+  const msg = `Olá ${appointment.nome}, confirmamos sua consulta para ${appointment.dia} às ${appointment.hora}?\n\nClique para confirmar: ${confirmUrl}`;
+  const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+  // Open in system default browser (not Electron window)
+  try {
+    await window.api.openExternalUrl({ url: waUrl });
+  } catch (e) {
+    // Fallback to window.open if IPC fails
+    window.open(waUrl, '_blank');
+  }
+  // Refresh the alerts view
+  await fetchConfirmacoes();
+  const content = document.getElementById('content-area');
+  if (content && currentScreen === 4) {
+    await showAlerts(content);
+  }
+}
+
 async function showAlerts(container) {
   await fetchAppointments();
+  await fetchConfirmacoes();
+
+  // Clear any previous refresh interval
+  if (alertsRefreshInterval) {
+    clearInterval(alertsRefreshInterval);
+    alertsRefreshInterval = null;
+  }
 
   // Get next 7 days
   const today = new Date();
@@ -612,27 +765,86 @@ async function showAlerts(container) {
 
   const list = document.getElementById('week-appointments');
   weekAppointments.forEach((p, i) => {
+    const conf = getConfirmationForAppointment(p);
+    const status = conf ? conf.status : 'Pendente';
+    const statusColor = getStatusColor(status);
+    const statusLabel = getStatusLabel(status);
+    const statusIcon = getStatusIcon(status);
+    const hasWhatsapp = !!(p.whatsapp && p.whatsapp.trim());
+    const showZapBtn = hasWhatsapp && status !== 'Confirmado' && status !== 'Cancelado';
+
     const card = document.createElement('div');
     card.className = 'alert-appointment stagger-item';
     card.style.animationDelay = `${i * 0.05}s`;
+    card.style.borderLeft = `4px solid ${statusColor}`;
     card.innerHTML = `
       <div class="alert-appointment-info">
         <h4>${(p.nome || '').toUpperCase()}</h4>
         <p>${(p.servico || t('PROCEDIMENTO')).toUpperCase()}</p>
+        <div class="alert-confirmation-status" style="color: ${statusColor}; margin-top: 6px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+          <span class="material-icons-round" style="font-size: 16px;">${statusIcon}</span>
+          <span>${statusLabel}</span>
+        </div>
       </div>
-      <div class="alert-appointment-time">
-        <div class="meta-row">
-          <span class="material-icons-round">calendar_today</span>
-          <span>${p.dia}</span>
+      <div class="alert-appointment-actions">
+        <div class="alert-appointment-time">
+          <div class="meta-row">
+            <span class="material-icons-round">calendar_today</span>
+            <span>${p.dia}</span>
+          </div>
+          <div class="meta-row">
+            <span class="material-icons-round">schedule</span>
+            <span>${p.hora}</span>
+          </div>
         </div>
-        <div class="meta-row">
-          <span class="material-icons-round">schedule</span>
-          <span>${p.hora}</span>
-        </div>
+        ${showZapBtn ? `<button class="btn-zap" data-idx="${i}" title="${t('Enviar confirmação via WhatsApp')}">
+          <span class="material-icons-round" style="font-size: 18px;">send</span>
+          <span>${t('Enviar Zap')}</span>
+        </button>` : ''}
+        ${!hasWhatsapp ? `<div class="no-whatsapp-hint" style="color: var(--text-muted); font-size: 11px; margin-top: 4px;">${t('Sem WhatsApp')}</div>` : ''}
       </div>
     `;
     list.appendChild(card);
+
+    // Add click handler for Zap button
+    if (showZapBtn) {
+      const btn = card.querySelector('.btn-zap');
+      if (btn) {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          enviarZap(p, conf);
+        });
+      }
+    }
   });
+
+  // Auto-refresh confirmations every 30 seconds
+  alertsRefreshInterval = setInterval(async () => {
+    if (currentScreen !== 4) {
+      clearInterval(alertsRefreshInterval);
+      alertsRefreshInterval = null;
+      return;
+    }
+    await fetchConfirmacoes();
+    // Update status badges without full re-render
+    const cards = document.querySelectorAll('.alert-appointment');
+    cards.forEach((card, i) => {
+      if (i < weekAppointments.length) {
+        const p = weekAppointments[i];
+        const conf = getConfirmationForAppointment(p);
+        const status = conf ? conf.status : 'Pendente';
+        const statusColor = getStatusColor(status);
+        const statusLabel = getStatusLabel(status);
+        const statusIcon = getStatusIcon(status);
+        card.style.borderLeft = `4px solid ${statusColor}`;
+        const statusEl = card.querySelector('.alert-confirmation-status');
+        if (statusEl) {
+          statusEl.style.color = statusColor;
+          statusEl.innerHTML = `<span class="material-icons-round" style="font-size: 16px;">${statusIcon}</span><span>${statusLabel}</span>`;
+        }
+      }
+    });
+  }, 30000);
 }
 
 // ========================================
@@ -847,6 +1059,11 @@ async function setupActivation() {
         localStorage.setItem('subscription_status', subscriptionStatus);
         localStorage.setItem('subscription_plan', subscriptionPlan || '');
         localStorage.setItem('subscription_expires', subscriptionExpires || '');
+        doctorName = email.split('@')[0].replace(/[._-]/g, ' ');
+        localStorage.setItem('clinica_id', clinicaId);
+        localStorage.setItem('user_email', email);
+        localStorage.setItem('user_role', userRole);
+        localStorage.setItem('doctor_name', doctorName);
         showSnack(t('Login realizado com sucesso!'));
         showMainScreen();
       } else {
@@ -905,9 +1122,11 @@ async function setupActivation() {
       if (result.success) {
         clinicaId = result.clinicaId || email;
         userRole = result.role || role;
+        doctorName = email.split('@')[0].replace(/[._-]/g, ' ');
         localStorage.setItem('clinica_id', clinicaId);
         localStorage.setItem('user_email', email);
         localStorage.setItem('user_role', userRole);
+        localStorage.setItem('doctor_name', doctorName);
         showSnack(t('Conta criada com sucesso!'));
         showMainScreen();
       } else {
@@ -1018,6 +1237,35 @@ async function setupActivation() {
   }
 }
 
+function setupUpdateListener() {
+  if (updateListenerRegistered) return;
+  if (!window.api.onUpdateStatus) return;
+  updateListenerRegistered = true;
+  window.api.onUpdateStatus((data) => {
+    const banner = document.getElementById('update-banner');
+    const text = document.getElementById('update-text');
+    const installBtn = document.getElementById('update-install-btn');
+    if (!banner || !text) return;
+
+    text.textContent = data.message;
+    banner.classList.remove('hidden');
+
+    if (data.status === 'downloaded') {
+      installBtn.classList.remove('hidden');
+      installBtn.onclick = () => window.api.installUpdate();
+    } else {
+      installBtn.classList.add('hidden');
+    }
+  });
+
+  const closeBtn = document.getElementById('update-close-btn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      document.getElementById('update-banner').classList.add('hidden');
+    });
+  }
+}
+
 function showMainScreen() {
   document.getElementById('activation-screen').classList.add('hidden');
   document.getElementById('main-screen').classList.remove('hidden');
@@ -1027,6 +1275,7 @@ function showMainScreen() {
   startClock();
   updateSubscriptionBadge();
   startSubscriptionCheck();
+  setupUpdateListener();
 
   // Show/hide prontuario nav based on role
   const navProntuario = document.getElementById('nav-prontuario');
@@ -1056,6 +1305,7 @@ function setupWindowControls() {
 // ========================================
 document.addEventListener('DOMContentLoaded', () => {
   setupWindowControls();
+  doctorName = localStorage.getItem('doctor_name') || '';
   setupActivation();
   // Always show login screen - user must authenticate to get JWT + encryption key
 });
@@ -1198,15 +1448,24 @@ function renderProntuarioList(container, prontuarios, patientId) {
   document.getElementById('btn-new-prontuario').addEventListener('click', () => showProntuarioForm(patientId, patientName));
 
   prontuarios.forEach(p => {
-    const date = p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '-';
-    const time = p.created_at ? new Date(p.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+    const dateObj = p.created_at ? parseUTCDate(p.created_at) : null;
+    const date = dateObj ? dateObj.toLocaleDateString('pt-BR') : '-';
+    const time = dateObj ? dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+    const locked = isRecordLocked(p.created_at);
     const card = document.createElement('div');
     card.className = 'prontuario-card';
     card.innerHTML = `
       <div class="prontuario-card-header">
-        <div class="prontuario-card-date">${date} ${time}</div>
-        <div class="prontuario-card-badge">${p.anexo_count ? p.anexo_count + ' ' + t('ANEXO(S)') : t('PRONTUARIO')}</div>
+        <div class="prontuario-card-date">
+          ${date} ${time}
+          ${locked ? `<span style="color:var(--danger);margin-left:8px;font-size:11px;"><span class="material-icons-round" style="font-size:14px;vertical-align:middle;">lock</span> ${t('BLOQUEADO')}</span>` : ''}
+        </div>
+        <div class="prontuario-card-badge">
+          ${p.integrity_hash ? '<span class="material-icons-round" style="font-size:12px;vertical-align:middle;color:#4caf50;">verified</span> ' : ''}
+          ${p.anexo_count ? p.anexo_count + ' ' + t('ANEXO(S)') : t('PRONTUARIO')}
+        </div>
       </div>
+      ${p.cid10_codigo ? `<div class="prontuario-card-field"><div class="prontuario-card-label">${t('CID-10')}</div><div class="prontuario-card-value">${escapeHtml(p.cid10_codigo)}${p.cid10_descricao ? ' - ' + escapeHtml(p.cid10_descricao) : ''}</div></div>` : ''}
       <div class="prontuario-card-field">
         <div class="prontuario-card-label">${t('SINTOMAS')}</div>
         <div class="prontuario-card-value">${escapeHtml(p.sintomas) || '-'}</div>
@@ -1219,29 +1478,59 @@ function renderProntuarioList(container, prontuarios, patientId) {
         <div class="prontuario-card-label">${t('TRATAMENTO')}</div>
         <div class="prontuario-card-value">${escapeHtml(p.tratamento) || '-'}</div>
       </div>
+      ${p.anamnese ? `<div class="prontuario-card-field"><div class="prontuario-card-label">${t('ANAMNESE')}</div><div class="prontuario-card-value">${escapeHtml(p.anamnese)}</div></div>` : ''}
+      ${p.prescricoes ? `<div class="prontuario-card-field"><div class="prontuario-card-label">${t('PRESCRICOES')}</div><div class="prontuario-card-value">${escapeHtml(p.prescricoes)}</div></div>` : ''}
       ${p.observacoes ? `<div class="prontuario-card-field"><div class="prontuario-card-label">${t('OBSERVACOES')}</div><div class="prontuario-card-value">${escapeHtml(p.observacoes)}</div></div>` : ''}
       <div class="prontuario-card-actions">
-        <button class="btn-prontuario btn-sm btn-secondary btn-edit-pront" data-id="${escapeHtml(p.id)}">
-          <span class="material-icons-round">edit</span> ${t('EDITAR')}
+        ${!locked ? `<button class="btn-prontuario btn-sm btn-secondary btn-edit-pront" data-id="${escapeHtml(p.id)}"><span class="material-icons-round">edit</span> ${t('EDITAR')}</button>` : `<button class="btn-prontuario btn-sm btn-secondary btn-retificar-pront" data-id="${escapeHtml(p.id)}"><span class="material-icons-round">history</span> ${t('RETIFICACAO')}</button>`}
+        <button class="btn-prontuario btn-sm btn-secondary btn-exames-pront" data-id="${escapeHtml(p.id)}">
+          <span class="material-icons-round">biotech</span> ${t('EXAMES')}
+        </button>
+        <button class="btn-prontuario btn-sm btn-secondary btn-evolucoes-pront" data-id="${escapeHtml(p.id)}">
+          <span class="material-icons-round">timeline</span> ${t('EVOLUCOES')}
         </button>
         <button class="btn-prontuario btn-sm btn-secondary btn-anexos-pront" data-id="${escapeHtml(p.id)}">
           <span class="material-icons-round">attach_file</span> ${t('ANEXOS')}
         </button>
-        <button class="btn-prontuario btn-sm btn-danger btn-delete-pront" data-id="${escapeHtml(p.id)}">
-          <span class="material-icons-round">delete</span>
+        <button class="btn-prontuario btn-sm btn-secondary btn-verify-pront" data-id="${escapeHtml(p.id)}" title="${t('VERIFICAR INTEGRIDADE')}">
+          <span class="material-icons-round">verified_user</span>
         </button>
       </div>
     `;
-    card.querySelector('.btn-edit-pront').addEventListener('click', () => editProntuario(p.id, patientId));
+    if (!locked) {
+      const editBtn = card.querySelector('.btn-edit-pront');
+      if (editBtn) editBtn.addEventListener('click', () => editProntuario(p.id, patientId));
+    } else {
+      const retBtn = card.querySelector('.btn-retificar-pront');
+      if (retBtn) retBtn.addEventListener('click', () => showRetificacaoForm(p.id));
+    }
+    card.querySelector('.btn-exames-pront').addEventListener('click', () => showExamesSection(p.id));
+    card.querySelector('.btn-evolucoes-pront').addEventListener('click', () => showEvolucoesTimeline(p.id));
     card.querySelector('.btn-anexos-pront').addEventListener('click', () => viewAnexos(p.id));
-    card.querySelector('.btn-delete-pront').addEventListener('click', () => deleteProntuarioConfirm(p.id, patientId));
+    card.querySelector('.btn-verify-pront').addEventListener('click', () => verifyProntuarioIntegrity(p.id));
     container.appendChild(card);
   });
+}
+
+function isRecordLocked(createdAt) {
+  if (!createdAt) return false;
+  const created = parseUTCDate(createdAt);
+  const now = new Date();
+  const endOfDay = new Date(created);
+  endOfDay.setHours(23, 59, 59, 999);
+  return now > endOfDay;
 }
 
 function showProntuarioForm(patientId, patientName, editData) {
   const container = document.getElementById('content-area');
   const isEdit = !!editData;
+  const locked = isEdit && isRecordLocked(editData.created_at);
+
+  if (locked) {
+    showSnack(t('Este prontuario esta bloqueado para edicao.'), true);
+    return;
+  }
+
   container.innerHTML = `
     <div class="prontuario-container fade-in">
       <div class="prontuario-header">
@@ -1264,21 +1553,52 @@ function showProntuarioForm(patientId, patientName, editData) {
             <input type="text" class="prontuario-form-input" id="pront-patient-name" value="${escapeHtml(patientName)}" placeholder="${t('Nome do Paciente')}" />
           </div>
         </div>
+        <div class="prontuario-form-row">
+          <div class="prontuario-form-group">
+            <label class="prontuario-form-label">${t('DATA DE NASCIMENTO')}</label>
+            <input type="date" class="prontuario-form-input" id="pront-data-nascimento" value="${escapeHtml(editData?.data_nascimento || '')}" />
+          </div>
+          <div class="prontuario-form-group">
+            <label class="prontuario-form-label">${t('CONTATO')}</label>
+            <input type="text" class="prontuario-form-input" id="pront-contato" value="${escapeHtml(editData?.contato || '')}" placeholder="${t('Telefone ou WhatsApp do paciente')}" />
+          </div>
+        </div>
+        <div class="prontuario-form-group">
+          <label class="prontuario-form-label">${t('HISTORICO CLINICO')}</label>
+          <textarea class="prontuario-form-textarea" id="pront-historico-clinico" placeholder="${t('Historico clinico completo do paciente')}">${escapeHtml(editData?.historico_clinico || '')}</textarea>
+        </div>
+        <div class="prontuario-form-group">
+          <label class="prontuario-form-label">${t('ANAMNESE')}</label>
+          <textarea class="prontuario-form-textarea" id="pront-anamnese" placeholder="${t('Anamnese detalhada')}">${escapeHtml(editData?.anamnese || '')}</textarea>
+        </div>
         <div class="prontuario-form-group">
           <label class="prontuario-form-label">${t('SINTOMAS')}</label>
-          <textarea class="prontuario-form-textarea" id="pront-sintomas" placeholder="${t('Descreva os sintomas do paciente')}">${escapeHtml(editData?.sintomas)}</textarea>
+          <textarea class="prontuario-form-textarea" id="pront-sintomas" placeholder="${t('Descreva os sintomas do paciente')}">${escapeHtml(editData?.sintomas || '')}</textarea>
         </div>
         <div class="prontuario-form-group">
           <label class="prontuario-form-label">${t('DIAGNOSTICO')}</label>
-          <textarea class="prontuario-form-textarea" id="pront-diagnostico" placeholder="${t('Diagnostico medico')}">${escapeHtml(editData?.diagnostico)}</textarea>
+          <textarea class="prontuario-form-textarea" id="pront-diagnostico" placeholder="${t('Diagnostico medico')}">${escapeHtml(editData?.diagnostico || '')}</textarea>
+        </div>
+        <div class="prontuario-form-group">
+          <label class="prontuario-form-label">${t('CID-10')} (${t('OPCIONAL')})</label>
+          <div style="position:relative;">
+            <input type="text" class="prontuario-form-input" id="pront-cid10-search" placeholder="${t('Buscar CID-10')}" value="${escapeHtml(editData?.cid10_codigo ? editData.cid10_codigo + ' - ' + (editData.cid10_descricao || '') : '')}" autocomplete="off" />
+            <div id="cid10-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:200px;overflow-y:auto;background:var(--bg-secondary);border:1px solid var(--gold);border-radius:8px;z-index:100;"></div>
+          </div>
+          <input type="hidden" id="pront-cid10-codigo" value="${escapeHtml(editData?.cid10_codigo || '')}" />
+          <input type="hidden" id="pront-cid10-descricao" value="${escapeHtml(editData?.cid10_descricao || '')}" />
         </div>
         <div class="prontuario-form-group">
           <label class="prontuario-form-label">${t('TRATAMENTO')}</label>
-          <textarea class="prontuario-form-textarea" id="pront-tratamento" placeholder="${t('Plano de tratamento prescrito')}">${escapeHtml(editData?.tratamento)}</textarea>
+          <textarea class="prontuario-form-textarea" id="pront-tratamento" placeholder="${t('Plano de tratamento prescrito')}">${escapeHtml(editData?.tratamento || '')}</textarea>
+        </div>
+        <div class="prontuario-form-group">
+          <label class="prontuario-form-label">${t('PRESCRICOES')} (${t('OPCIONAL')})</label>
+          <textarea class="prontuario-form-textarea" id="pront-prescricoes" placeholder="${t('Prescricoes medicas')}">${escapeHtml(editData?.prescricoes || '')}</textarea>
         </div>
         <div class="prontuario-form-group">
           <label class="prontuario-form-label">${t('OBSERVACOES')} (${t('OPCIONAL')})</label>
-          <textarea class="prontuario-form-textarea" id="pront-observacoes" placeholder="${t('Observacoes adicionais')}">${escapeHtml(editData?.observacoes)}</textarea>
+          <textarea class="prontuario-form-textarea" id="pront-observacoes" placeholder="${t('Observacoes adicionais')}">${escapeHtml(editData?.observacoes || '')}</textarea>
         </div>
         <div class="prontuario-form-actions">
           <button class="btn-prontuario" id="btn-save-prontuario">
@@ -1299,6 +1619,42 @@ function showProntuarioForm(patientId, patientName, editData) {
     else saveProntuarioNew();
   });
   document.getElementById('btn-cancel-prontuario').addEventListener('click', () => showScreen(6));
+
+  // CID-10 autocomplete
+  const cid10Input = document.getElementById('pront-cid10-search');
+  const cid10Dropdown = document.getElementById('cid10-dropdown');
+  let cid10Timer = null;
+  cid10Input.addEventListener('input', () => {
+    clearTimeout(cid10Timer);
+    const q = cid10Input.value.trim();
+    if (q.length < 2) { cid10Dropdown.style.display = 'none'; return; }
+    cid10Timer = setTimeout(async () => {
+      const res = await window.api.getCid10({ query: q });
+      if (res.success && res.data && res.data.length > 0) {
+        cid10Dropdown.innerHTML = res.data.map(c =>
+          `<div class="cid10-option" data-code="${escapeHtml(c.codigo)}" data-desc="${escapeHtml(c.descricao)}" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05);color:var(--text-primary);font-size:13px;">${escapeHtml(c.codigo)} - ${escapeHtml(c.descricao)}</div>`
+        ).join('');
+        cid10Dropdown.style.display = 'block';
+        cid10Dropdown.querySelectorAll('.cid10-option').forEach(opt => {
+          opt.addEventListener('click', () => {
+            document.getElementById('pront-cid10-codigo').value = opt.dataset.code;
+            document.getElementById('pront-cid10-descricao').value = opt.dataset.desc;
+            cid10Input.value = opt.dataset.code + ' - ' + opt.dataset.desc;
+            cid10Dropdown.style.display = 'none';
+          });
+          opt.addEventListener('mouseenter', () => { opt.style.background = 'rgba(212,175,55,0.15)'; });
+          opt.addEventListener('mouseleave', () => { opt.style.background = 'transparent'; });
+        });
+      } else {
+        cid10Dropdown.style.display = 'none';
+      }
+    }, 300);
+  });
+  document.addEventListener('click', (e) => {
+    if (!cid10Input.contains(e.target) && !cid10Dropdown.contains(e.target)) {
+      cid10Dropdown.style.display = 'none';
+    }
+  });
 }
 
 async function saveProntuarioNew() {
@@ -1308,6 +1664,13 @@ async function saveProntuarioNew() {
   const diagnostico = document.getElementById('pront-diagnostico')?.value.trim();
   const tratamento = document.getElementById('pront-tratamento')?.value.trim();
   const observacoes = document.getElementById('pront-observacoes')?.value.trim();
+  const dataNascimento = document.getElementById('pront-data-nascimento')?.value.trim();
+  const contato = document.getElementById('pront-contato')?.value.trim();
+  const historicoClin = document.getElementById('pront-historico-clinico')?.value.trim();
+  const anamnese = document.getElementById('pront-anamnese')?.value.trim();
+  const prescricoes = document.getElementById('pront-prescricoes')?.value.trim();
+  const cid10Codigo = document.getElementById('pront-cid10-codigo')?.value.trim();
+  const cid10Descricao = document.getElementById('pront-cid10-descricao')?.value.trim();
 
   if (!patientId) { showSnack(t('Digite o CPF ou ID do paciente.'), true); return; }
   if (!sintomas) { showSnack(t('Preencha os sintomas.'), true); return; }
@@ -1323,6 +1686,13 @@ async function saveProntuarioNew() {
       diagnostico,
       tratamento,
       observacoes: observacoes || '',
+      data_nascimento: dataNascimento || '',
+      contato: contato || '',
+      historico_clinico: historicoClin || '',
+      anamnese: anamnese || '',
+      prescricoes: prescricoes || '',
+      cid10_codigo: cid10Codigo || '',
+      cid10_descricao: cid10Descricao || '',
     });
     if (result.success) {
       showSnack(t('Prontuario salvo com sucesso!'));
@@ -1342,6 +1712,13 @@ async function saveProntuarioEdit(prontuarioId, patientId) {
   const diagnostico = document.getElementById('pront-diagnostico')?.value.trim();
   const tratamento = document.getElementById('pront-tratamento')?.value.trim();
   const observacoes = document.getElementById('pront-observacoes')?.value.trim();
+  const dataNascimento = document.getElementById('pront-data-nascimento')?.value.trim();
+  const contato = document.getElementById('pront-contato')?.value.trim();
+  const historicoClin = document.getElementById('pront-historico-clinico')?.value.trim();
+  const anamnese = document.getElementById('pront-anamnese')?.value.trim();
+  const prescricoes = document.getElementById('pront-prescricoes')?.value.trim();
+  const cid10Codigo = document.getElementById('pront-cid10-codigo')?.value.trim();
+  const cid10Descricao = document.getElementById('pront-cid10-descricao')?.value.trim();
 
   if (!sintomas) { showSnack(t('Preencha os sintomas.'), true); return; }
   if (!diagnostico) { showSnack(t('Preencha o diagnostico.'), true); return; }
@@ -1350,7 +1727,7 @@ async function saveProntuarioEdit(prontuarioId, patientId) {
   try {
     const result = await window.api.updateProntuario({
       id: prontuarioId,
-      data: { sintomas, diagnostico, tratamento, observacoes: observacoes || '' },
+      data: { sintomas, diagnostico, tratamento, observacoes: observacoes || '', data_nascimento: dataNascimento || '', contato: contato || '', historico_clinico: historicoClin || '', anamnese: anamnese || '', prescricoes: prescricoes || '', cid10_codigo: cid10Codigo || '', cid10_descricao: cid10Descricao || '' },
     });
     if (result.success) {
       showSnack(t('Prontuario atualizado com sucesso!'));
@@ -1383,38 +1760,257 @@ async function editProntuario(prontuarioId, patientId) {
   }
 }
 
-async function deleteProntuarioConfirm(prontuarioId, patientId) {
+// Prontuarios cannot be deleted (LGPD / legal compliance)
+async function deleteProntuarioConfirm() {
+  showSnack(t('Prontuarios nao podem ser excluidos.'), true);
+}
+async function deleteProntuarioExecute() {
+  showSnack(t('Prontuarios nao podem ser excluidos.'), true);
+}
+
+
+// --- Exames Section ---
+async function showExamesSection(prontuarioId) {
   const container = document.getElementById('content-area');
+  container.innerHTML = '<div class="loading-spinner"></div>';
+  try {
+    const result = await window.api.listExames({ prontuarioId });
+    const exames = (result.success && result.data) ? result.data : [];
+    container.innerHTML = `
+      <div class="prontuario-container fade-in">
+        <div class="prontuario-header">
+          <div class="prontuario-title"><span class="material-icons-round">biotech</span> ${t('EXAMES')}</div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-prontuario btn-sm" id="btn-add-exame"><span class="material-icons-round">add</span> ${t('ADICIONAR EXAME')}</button>
+            <button class="btn-prontuario btn-secondary btn-sm" id="btn-back-exames"><span class="material-icons-round">arrow_back</span> ${t('VOLTAR')}</button>
+          </div>
+        </div>
+        <div id="exames-list"></div>
+        <div id="exame-form-area" style="display:none;margin-top:16px;">
+          <div class="prontuario-form">
+            <div class="prontuario-form-group">
+              <label class="prontuario-form-label">${t('TIPO DE EXAME')}</label>
+              <select class="prontuario-form-input" id="exame-tipo" style="padding:10px;">
+                <option value="">-- ${t('TIPO DE EXAME')} --</option>
+                <option value="Hemograma">Hemograma</option>
+                <option value="Glicemia">Glicemia</option>
+                <option value="Colesterol">Colesterol Total</option>
+                <option value="Triglicerideos">Triglicerideos</option>
+                <option value="TSH">TSH</option>
+                <option value="T4 Livre">T4 Livre</option>
+                <option value="Ureia">Ureia</option>
+                <option value="Creatinina">Creatinina</option>
+                <option value="TGO/AST">TGO/AST</option>
+                <option value="TGP/ALT">TGP/ALT</option>
+                <option value="Acido Urico">Acido Urico</option>
+                <option value="PSA">PSA</option>
+                <option value="Raio-X">Raio-X</option>
+                <option value="Ultrassonografia">Ultrassonografia</option>
+                <option value="Tomografia">Tomografia</option>
+                <option value="Ressonancia Magnetica">Ressonancia Magnetica</option>
+                <option value="ECG">ECG (Eletrocardiograma)</option>
+                <option value="Ecocardiograma">Ecocardiograma</option>
+                <option value="Endoscopia">Endoscopia</option>
+                <option value="Colonoscopia">Colonoscopia</option>
+                <option value="Mamografia">Mamografia</option>
+                <option value="Papanicolau">Papanicolau</option>
+                <option value="Densitometria">Densitometria Ossea</option>
+                <option value="Exame de Urina">Exame de Urina (EAS)</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </div>
+            <div class="prontuario-form-group">
+              <label class="prontuario-form-label">${t('DESCRICAO DO EXAME')}</label>
+              <textarea class="prontuario-form-textarea" id="exame-descricao" placeholder="${t('Descricao ou interpretacao do exame')}"></textarea>
+            </div>
+            <div class="prontuario-form-row">
+              <div class="prontuario-form-group">
+                <label class="prontuario-form-label">${t('DATA DO EXAME')}</label>
+                <input type="date" class="prontuario-form-input" id="exame-data" value="${new Date().toISOString().split('T')[0]}" />
+              </div>
+              <div class="prontuario-form-group">
+                <label class="prontuario-form-label">${t('PROFISSIONAL RESPONSAVEL')}</label>
+                <input type="text" class="prontuario-form-input" id="exame-profissional" value="${escapeHtml(localStorage.getItem('user_email') || '')}" />
+              </div>
+            </div>
+            <div class="prontuario-form-actions">
+              <button class="btn-prontuario" id="btn-save-exame"><span class="material-icons-round">save</span> ${t('SALVAR PRONTUARIO')}</button>
+              <button class="btn-prontuario btn-secondary" id="btn-cancel-exame"><span class="material-icons-round">cancel</span> ${t('CANCELAR')}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const listDiv = document.getElementById('exames-list');
+    if (exames.length === 0) {
+      listDiv.innerHTML = `<p style="color:var(--text-muted);text-align:center;padding:20px;">${t('Nenhum exame registrado.')}</p>`;
+    } else {
+      exames.forEach(ex => {
+        const d = ex.data_exame || ex.created_at || '';
+        const dateStr = d ? new Date(d).toLocaleDateString('pt-BR') : '-';
+        const item = document.createElement('div');
+        item.className = 'prontuario-card';
+        item.style.marginBottom = '8px';
+        item.innerHTML = `
+          <div class="prontuario-card-header"><div class="prontuario-card-date">${dateStr}</div><div class="prontuario-card-badge">${escapeHtml(ex.tipo_exame || '')}</div></div>
+          <div class="prontuario-card-field"><div class="prontuario-card-label">${t('DESCRICAO DO EXAME')}</div><div class="prontuario-card-value">${escapeHtml(ex.descricao || '-')}</div></div>
+          <div class="prontuario-card-field"><div class="prontuario-card-label">${t('PROFISSIONAL RESPONSAVEL')}</div><div class="prontuario-card-value">${escapeHtml(ex.profissional_responsavel || '-')}</div></div>
+        `;
+        listDiv.appendChild(item);
+      });
+    }
+
+    document.getElementById('btn-back-exames').addEventListener('click', () => showScreen(6));
+    document.getElementById('btn-add-exame').addEventListener('click', () => {
+      document.getElementById('exame-form-area').style.display = 'block';
+    });
+    document.getElementById('btn-cancel-exame').addEventListener('click', () => {
+      document.getElementById('exame-form-area').style.display = 'none';
+    });
+    document.getElementById('btn-save-exame').addEventListener('click', async () => {
+      const tipo = document.getElementById('exame-tipo').value;
+      const descricao = document.getElementById('exame-descricao').value.trim();
+      const dataExame = document.getElementById('exame-data').value;
+      const profissional = document.getElementById('exame-profissional').value.trim();
+      if (!tipo) { showSnack(t('TIPO DE EXAME'), true); return; }
+      try {
+        const res = await window.api.createExame({ prontuarioId, data: { tipo_exame: tipo, descricao, data_exame: dataExame, profissional_responsavel: profissional } });
+        if (res.success) { showSnack(t('Exame salvo com sucesso!')); showExamesSection(prontuarioId); }
+        else showSnack(t('Erro ao salvar exame.'), true);
+      } catch (e) { showSnack(t('Erro de Conexão'), true); }
+    });
+  } catch (e) {
+    showSnack(t('Erro de Conexão'), true);
+  }
+}
+
+// --- Evolucoes Timeline ---
+async function showEvolucoesTimeline(prontuarioId) {
+  const container = document.getElementById('content-area');
+  container.innerHTML = '<div class="loading-spinner"></div>';
+  try {
+    const result = await window.api.listEvolucoes({ prontuarioId });
+    const evolucoes = (result.success && result.data) ? result.data : [];
+    container.innerHTML = `
+      <div class="prontuario-container fade-in">
+        <div class="prontuario-header">
+          <div class="prontuario-title"><span class="material-icons-round">timeline</span> ${t('EVOLUCOES')}</div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-prontuario btn-sm" id="btn-add-evolucao"><span class="material-icons-round">add</span> ${t('ADICIONAR EVOLUCAO')}</button>
+            <button class="btn-prontuario btn-secondary btn-sm" id="btn-back-evolucoes"><span class="material-icons-round">arrow_back</span> ${t('VOLTAR')}</button>
+          </div>
+        </div>
+        <div id="evolucao-form-area" style="display:none;margin-bottom:16px;">
+          <div class="prontuario-form">
+            <div class="prontuario-form-group">
+              <label class="prontuario-form-label">${t('ADICIONAR EVOLUCAO')}</label>
+              <textarea class="prontuario-form-textarea" id="evolucao-texto" placeholder="${t('Texto da evolucao')}"></textarea>
+            </div>
+            <div class="prontuario-form-actions">
+              <button class="btn-prontuario" id="btn-save-evolucao"><span class="material-icons-round">save</span> ${t('SALVAR PRONTUARIO')}</button>
+              <button class="btn-prontuario btn-secondary" id="btn-cancel-evolucao"><span class="material-icons-round">cancel</span> ${t('CANCELAR')}</button>
+            </div>
+          </div>
+        </div>
+        <div id="evolucoes-timeline" style="border-left:3px solid var(--gold);padding-left:20px;margin-left:10px;"></div>
+      </div>
+    `;
+
+    const timeline = document.getElementById('evolucoes-timeline');
+    if (evolucoes.length === 0) {
+      timeline.innerHTML = `<p style="color:var(--text-muted);text-align:center;padding:20px;">${t('Nenhuma evolucao registrada.')}</p>`;
+    } else {
+      evolucoes.forEach(ev => {
+        const d = ev.created_at ? parseUTCDate(ev.created_at) : null;
+        const dateStr = d ? d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-';
+        const item = document.createElement('div');
+        item.style.cssText = 'position:relative;margin-bottom:16px;padding:12px;background:var(--bg-secondary);border-radius:8px;border:1px solid rgba(255,255,255,0.05);';
+        item.innerHTML = `
+          <div style="position:absolute;left:-29px;top:14px;width:12px;height:12px;background:var(--gold);border-radius:50%;border:2px solid var(--bg-primary);"></div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-family:monospace;">${dateStr} - ${escapeHtml(ev.created_by || '')}</div>
+          <div style="color:var(--text-primary);font-size:13px;line-height:1.5;">${escapeHtml(ev.texto || '')}</div>
+        `;
+        timeline.appendChild(item);
+      });
+    }
+
+    document.getElementById('btn-back-evolucoes').addEventListener('click', () => showScreen(6));
+    document.getElementById('btn-add-evolucao').addEventListener('click', () => {
+      document.getElementById('evolucao-form-area').style.display = 'block';
+    });
+    document.getElementById('btn-cancel-evolucao').addEventListener('click', () => {
+      document.getElementById('evolucao-form-area').style.display = 'none';
+    });
+    document.getElementById('btn-save-evolucao').addEventListener('click', async () => {
+      const texto = document.getElementById('evolucao-texto').value.trim();
+      if (!texto) return;
+      try {
+        const res = await window.api.createEvolucao({ prontuarioId, data: { texto, tipo: 'evolucao' } });
+        if (res.success) { showSnack(t('Evolucao salva com sucesso!')); showEvolucoesTimeline(prontuarioId); }
+        else showSnack(t('Erro ao salvar evolucao.'), true);
+      } catch (e) { showSnack(t('Erro de Conexão'), true); }
+    });
+  } catch (e) {
+    showSnack(t('Erro de Conexão'), true);
+  }
+}
+
+// --- Retificacao Form (for locked records) ---
+async function showRetificacaoForm(prontuarioId) {
+  const container = document.getElementById('content-area');
+  const campos = ['sintomas', 'diagnostico', 'tratamento', 'observacoes', 'historico_clinico', 'anamnese', 'prescricoes'];
   container.innerHTML = `
-    <div class="prontuario-container fade-in" style="max-width:500px;margin:60px auto;text-align:center;">
-      <span class="material-icons-round" style="font-size:48px;color:var(--danger);margin-bottom:16px;">warning</span>
-      <h2 style="color:var(--text-primary);margin-bottom:12px;">${t('EXCLUIR PRONTUARIO?')}</h2>
-      <p style="color:var(--text-secondary);margin-bottom:24px;font-size:13px;">${t('Esta acao nao pode ser desfeita. O prontuario e todos os anexos serao removidos permanentemente.')}</p>
-      <div style="display:flex;gap:12px;justify-content:center;">
-        <button class="btn-prontuario btn-danger" id="btn-confirm-delete">
-          <span class="material-icons-round">delete_forever</span> ${t('SIM, EXCLUIR')}
-        </button>
-        <button class="btn-prontuario btn-secondary" id="btn-cancel-delete">
-          <span class="material-icons-round">cancel</span> ${t('CANCELAR')}
-        </button>
+    <div class="prontuario-container fade-in">
+      <div class="prontuario-header">
+        <div class="prontuario-title"><span class="material-icons-round">history</span> ${t('RETIFICAR PRONTUARIO')}</div>
+        <button class="btn-prontuario btn-secondary btn-sm" id="btn-back-retificacao"><span class="material-icons-round">arrow_back</span> ${t('VOLTAR')}</button>
+      </div>
+      <div class="prontuario-form">
+        <div class="prontuario-form-group">
+          <label class="prontuario-form-label">${t('MOTIVO DA RETIFICACAO')}</label>
+          <textarea class="prontuario-form-textarea" id="retificacao-motivo" placeholder="${t('Descreva o motivo da correcao')}"></textarea>
+        </div>
+        <div class="prontuario-form-group">
+          <label class="prontuario-form-label">${t('CAMPO A RETIFICAR')}</label>
+          <select class="prontuario-form-input" id="retificacao-campo" style="padding:10px;">
+            ${campos.map(c => `<option value="${c}">${c}</option>`).join('')}
+          </select>
+        </div>
+        <div class="prontuario-form-group">
+          <label class="prontuario-form-label">${t('VALOR CORRIGIDO')}</label>
+          <textarea class="prontuario-form-textarea" id="retificacao-valor" placeholder="${t('Novo valor correto para o campo')}"></textarea>
+        </div>
+        <div class="prontuario-form-actions">
+          <button class="btn-prontuario" id="btn-save-retificacao"><span class="material-icons-round">save</span> ${t('SALVAR PRONTUARIO')}</button>
+          <button class="btn-prontuario btn-secondary" id="btn-cancel-retificacao"><span class="material-icons-round">cancel</span> ${t('CANCELAR')}</button>
+        </div>
       </div>
     </div>
   `;
-  document.getElementById('btn-confirm-delete').addEventListener('click', () => deleteProntuarioExecute(prontuarioId, patientId));
-  document.getElementById('btn-cancel-delete').addEventListener('click', () => showScreen(6));
+  document.getElementById('btn-back-retificacao').addEventListener('click', () => showScreen(6));
+  document.getElementById('btn-cancel-retificacao').addEventListener('click', () => showScreen(6));
+  document.getElementById('btn-save-retificacao').addEventListener('click', async () => {
+    const motivo = document.getElementById('retificacao-motivo').value.trim();
+    const campo = document.getElementById('retificacao-campo').value;
+    const valor = document.getElementById('retificacao-valor').value.trim();
+    if (!motivo || !valor) { showSnack(t('Preencha os campos obrigatórios.'), true); return; }
+    try {
+      const res = await window.api.createRetificacao({ prontuarioId, data: { motivo, campo, valor_corrigido: valor } });
+      if (res.success) { showSnack(t('Retificacao salva com sucesso!')); showScreen(6); }
+      else showSnack(t('Erro ao salvar retificacao.'), true);
+    } catch (e) { showSnack(t('Erro de Conexão'), true); }
+  });
 }
 
-async function deleteProntuarioExecute(prontuarioId, patientId) {
+// --- Verify Prontuario Integrity ---
+async function verifyProntuarioIntegrity(prontuarioId) {
   try {
-    const result = await window.api.deleteProntuario({ id: prontuarioId });
-    if (result.success) {
-      showSnack(t('Prontuario excluido com sucesso.'));
-      const content = document.getElementById('content-area');
-      showProntuarioMain(content);
-      document.getElementById('prontuario-patient-search').value = patientId;
-      await searchProntuarioPatient();
+    const result = await window.api.verifyProntuario({ prontuarioId });
+    if (result.success && result.data && result.data.integrity_valid) {
+      showSnack(t('Integridade verificada com sucesso!'));
     } else {
-      showSnack(t('Erro ao excluir prontuario.'), true);
+      showSnack(t('Falha na verificacao de integridade!'), true);
     }
   } catch (e) {
     showSnack(t('Erro de Conexão'), true);
@@ -1602,14 +2198,21 @@ async function printProntuarios(patientId) {
     `;
 
     prontuarios.forEach((p, i) => {
-      const date = p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '-';
-      const time = p.created_at ? new Date(p.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+      const dateObj = p.created_at ? parseUTCDate(p.created_at) : null;
+      const date = dateObj ? dateObj.toLocaleDateString('pt-BR') : '-';
+      const time = dateObj ? dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
       html += `
         <div class="record">
-          <div class="record-date">#${i + 1} - ${date} ${time}</div>
+          <div class="record-date">#${i + 1} - ${date} ${time}${p.integrity_hash ? ' | Hash: ' + escapeHtml(p.integrity_hash.substring(0, 16)) + '...' : ''}</div>
+          ${p.data_nascimento ? `<div class="field"><div class="field-label">${t('DATA DE NASCIMENTO')}</div><div class="field-value">${escapeHtml(p.data_nascimento)}</div></div>` : ''}
+          ${p.contato ? `<div class="field"><div class="field-label">${t('CONTATO')}</div><div class="field-value">${escapeHtml(p.contato)}</div></div>` : ''}
+          ${p.historico_clinico ? `<div class="field"><div class="field-label">${t('HISTORICO CLINICO')}</div><div class="field-value">${escapeHtml(p.historico_clinico)}</div></div>` : ''}
+          ${p.anamnese ? `<div class="field"><div class="field-label">${t('ANAMNESE')}</div><div class="field-value">${escapeHtml(p.anamnese)}</div></div>` : ''}
+          ${p.cid10_codigo ? `<div class="field"><div class="field-label">${t('CID-10')}</div><div class="field-value">${escapeHtml(p.cid10_codigo)}${p.cid10_descricao ? ' - ' + escapeHtml(p.cid10_descricao) : ''}</div></div>` : ''}
           <div class="field"><div class="field-label">${t('SINTOMAS')}</div><div class="field-value">${escapeHtml(p.sintomas) || '-'}</div></div>
           <div class="field"><div class="field-label">${t('DIAGNOSTICO')}</div><div class="field-value">${escapeHtml(p.diagnostico) || '-'}</div></div>
           <div class="field"><div class="field-label">${t('TRATAMENTO')}</div><div class="field-value">${escapeHtml(p.tratamento) || '-'}</div></div>
+          ${p.prescricoes ? `<div class="field"><div class="field-label">${t('PRESCRICOES')}</div><div class="field-value">${escapeHtml(p.prescricoes)}</div></div>` : ''}
           ${p.observacoes ? `<div class="field"><div class="field-label">${t('OBSERVACOES')}</div><div class="field-value">${escapeHtml(p.observacoes)}</div></div>` : ''}
         </div>
       `;

@@ -1,10 +1,43 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt-BR">
 <head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18060260743"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'AW-18060260743');
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Medical Safe Gold - Secure Medical Scheduling</title>
-  <meta name="description" content="Sistema seguro de agendamento medico com criptografia AES-256. Proteja os dados dos seus pacientes.">
+  <title>Sistema para Clínica Médica | Agendamento e Prontuário Eletrônico - Medical Safe Gold</title>
+  <meta name="description" content="Sistema para clínica médica com agendamento de consultas, prontuário eletrônico, confirmação via WhatsApp e criptografia AES-256. Teste grátis! Software completo para consultório e clínica.">
+  <meta name="keywords" content="sistema para clínica, software médico, agendamento de consultas, prontuário eletrônico, sistema para consultório, agenda médica, software para clínica, gestão de pacientes, confirmação WhatsApp, prontuário digital, sistema de agendamento médico, software de gestão clínica">
+  <meta name="author" content="Jonnathan Coelho Silva">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://medicalsafegold.com/">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://medicalsafegold.com/">
+  <meta property="og:title" content="Sistema para Clínica Médica | Agendamento e Prontuário - Medical Safe Gold">
+  <meta property="og:description" content="Software completo para clínicas e consultórios. Agendamento, prontuário eletrônico, confirmação via WhatsApp e criptografia militar. Teste grátis!">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:site_name" content="Medical Safe Gold">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Sistema para Clínica Médica | Medical Safe Gold">
+  <meta name="twitter:description" content="Software de agendamento e prontuário para clínicas. Criptografia AES-256, confirmação via WhatsApp. Teste grátis!">
+
+  <!-- Hreflang for multilingual SEO -->
+  <link rel="alternate" hreflang="pt-BR" href="https://medicalsafegold.com/">
+  <link rel="alternate" hreflang="en" href="https://medicalsafegold.com/?lang=en">
+  <link rel="alternate" hreflang="es" href="https://medicalsafegold.com/?lang=es">
+  <link rel="alternate" hreflang="de" href="https://medicalsafegold.com/?lang=de">
+  <link rel="alternate" hreflang="x-default" href="https://medicalsafegold.com/">
+
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
   <style>
@@ -353,7 +386,273 @@
       font-size: 24px; cursor: pointer;
     }
     .modal-error { color: var(--danger); font-size: 13px; margin-bottom: 12px; display: none; }
+
+    /* WhatsApp Floating Button */
+    .whatsapp-float {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 60px;
+      height: 60px;
+      background: #25D366;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(37,211,102,0.4);
+      z-index: 9999;
+      transition: transform 0.3s, box-shadow 0.3s;
+      text-decoration: none;
+    }
+    .whatsapp-float:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 20px rgba(37,211,102,0.6);
+    }
+    .whatsapp-float svg {
+      width: 32px;
+      height: 32px;
+      fill: #fff;
+    }
+    .whatsapp-float .wpp-tooltip {
+      position: absolute;
+      right: 70px;
+      background: #fff;
+      color: #333;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .whatsapp-float:hover .wpp-tooltip {
+      opacity: 1;
+    }
+
+    /* Como Funciona Section */
+    .how-it-works {
+      padding: 80px 20px;
+      text-align: center;
+      background: linear-gradient(135deg, rgba(212,175,55,0.05) 0%, rgba(0,0,0,0) 100%);
+    }
+    .how-it-works h2 {
+      font-size: 2rem;
+      color: var(--gold);
+      margin-bottom: 12px;
+    }
+    .how-it-works .hiw-subtitle {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      margin-bottom: 50px;
+    }
+    .hiw-steps {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      flex-wrap: wrap;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .hiw-step {
+      flex: 1;
+      min-width: 220px;
+      max-width: 280px;
+      text-align: center;
+      position: relative;
+    }
+    .hiw-number {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--gold), #e6c84d);
+      color: #1a1a2e;
+      font-size: 1.5rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      box-shadow: 0 4px 15px rgba(212,175,55,0.3);
+    }
+    .hiw-step h3 {
+      color: #fff;
+      font-size: 1.1rem;
+      margin-bottom: 8px;
+    }
+    .hiw-step p {
+      color: var(--text-muted);
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+    .hiw-arrow {
+      position: absolute;
+      right: -30px;
+      top: 28px;
+      color: var(--gold);
+      font-size: 1.5rem;
+      opacity: 0.5;
+    }
+    @media (max-width: 768px) {
+      .hiw-arrow { display: none; }
+      .hiw-steps { gap: 30px; }
+    }
+
+    /* Improved Footer */
+    .footer-improved {
+      background: linear-gradient(180deg, #0d0d1a 0%, #0a0a14 100%);
+      border-top: 1px solid rgba(212,175,55,0.15);
+      padding: 40px 20px 20px;
+    }
+    .footer-content {
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 30px;
+    }
+    .footer-col {
+      flex: 1;
+      min-width: 200px;
+    }
+    .footer-col h4 {
+      color: var(--gold);
+      font-size: 0.9rem;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .footer-col p, .footer-col a {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      line-height: 1.8;
+      text-decoration: none;
+    }
+    .footer-col a:hover {
+      color: var(--gold);
+    }
+    .footer-bottom {
+      max-width: 900px;
+      margin: 30px auto 0;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      text-align: center;
+    }
+    .footer-bottom p {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+    @media (max-width: 600px) {
+      .footer-content { flex-direction: column; gap: 20px; }
+    }
   </style>
+
+  <!-- Schema.org Structured Data - SoftwareApplication -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Medical Safe Gold",
+    "description": "Sistema completo para clínicas e consultórios médicos. Agendamento de consultas, prontuário eletrônico, confirmação via WhatsApp e criptografia AES-256.",
+    "url": "https://medicalsafegold.com",
+    "applicationCategory": "HealthApplication",
+    "operatingSystem": "Windows 10, Windows 11",
+    "offers": [
+      {
+        "@type": "Offer",
+        "name": "Assinatura Mensal",
+        "price": "69.00",
+        "priceCurrency": "BRL",
+        "priceValidUntil": "2027-12-31",
+        "availability": "https://schema.org/InStock"
+      },
+      {
+        "@type": "Offer",
+        "name": "Plano Anual",
+        "price": "549.00",
+        "priceCurrency": "BRL",
+        "priceValidUntil": "2027-12-31",
+        "availability": "https://schema.org/InStock"
+      }
+    ],
+    "featureList": [
+      "Agendamento de consultas",
+      "Prontuário eletrônico",
+      "Confirmação via WhatsApp",
+      "Criptografia AES-256",
+      "Backup na nuvem MongoDB Atlas",
+      "Central de alertas",
+      "Multi-idioma (PT, EN, DE, ES)",
+      "Conformidade LGPD/GDPR"
+    ],
+    "author": {
+      "@type": "Person",
+      "name": "Jonnathan Coelho Silva",
+      "email": "jonnathancoelhosilvacoelho@gmail.com"
+    }
+  }
+  </script>
+
+  <!-- Schema.org - Organization -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Medical Safe Gold",
+    "url": "https://medicalsafegold.com",
+    "email": "jonnathancoelhosilvacoelho@gmail.com",
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "telephone": "+55-11-94849-6712",
+      "contactType": "customer service",
+      "availableLanguage": ["Portuguese", "English", "Spanish", "German"]
+    }
+  }
+  </script>
+
+  <!-- Schema.org - FAQ -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "O que é o Medical Safe Gold?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Medical Safe Gold é um software completo para gestão de clínicas e consultórios médicos. Inclui agendamento de consultas, prontuário eletrônico, confirmação via WhatsApp e criptografia militar AES-256 para proteger dados dos pacientes."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Quanto custa o Medical Safe Gold?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "O Medical Safe Gold oferece dois planos: Assinatura Mensal por R$ 69/mês e Plano Anual por R$ 549/ano (economia de 34%). Ambos incluem todas as funcionalidades, criptografia AES-256 e backup na nuvem."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "O sistema é seguro para dados de pacientes?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Sim. O Medical Safe Gold usa criptografia AES-256, o mesmo padrão usado por bancos e militares. Os dados são armazenados com segurança no MongoDB Atlas e o sistema está em conformidade com a LGPD e GDPR."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "O Medical Safe Gold funciona em qual sistema operacional?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Atualmente o Medical Safe Gold está disponível para Windows 10 e Windows 11. A instalação é simples e rápida, levando menos de 2 minutos."
+        }
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
   <header class="header">
@@ -368,15 +667,15 @@
         <a href="#features" data-t="nav-features">Recursos</a>
         <a href="#pricing" data-t="nav-pricing">Planos</a>
         <a href="#legal" data-t="nav-legal">Legal</a>
-        <a href="https://github.com/jonnathanimperio/medical-safe-gold/releases/download/v1.0.0/Medical.Safe.Gold.Setup.1.0.0.exe" class="nav-download-btn" data-t="nav-install">INSTALAR</a>
+        <a href="https://github.com/jonnathanimperio/medical-safe-gold/releases/download/v1.2.0/Medical.Safe.Gold.Setup.1.2.0.exe" class="nav-download-btn" data-t="nav-install">INSTALAR</a>
       </div>
       <div class="lang-selector">
         <span class="material-icons-round" style="font-size:16px;color:var(--text-muted);">language</span>
         <select id="lang-select" onchange="changeLang(this.value)">
-          <option value="pt">Portugues</option>
+          <option value="pt">Português</option>
           <option value="en">English</option>
           <option value="de">Deutsch</option>
-          <option value="es">Espanol</option>
+          <option value="es">Español</option>
         </select>
       </div>
     </div>
@@ -387,20 +686,20 @@
       <span class="material-icons-round" style="font-size:14px;">verified_user</span>
       <span data-t="hero-badge">CRIPTOGRAFIA MILITAR AES-256</span>
     </div>
-    <h1 data-t="hero-title">Agendamento Medico Seguro e Criptografado</h1>
-    <p data-t="hero-desc">Proteja os dados dos seus pacientes com criptografia de nivel militar. Sistema completo de agendamento medico com armazenamento seguro no MongoDB Atlas.</p>
+    <h1 data-t="hero-title">Agendamento Médico Seguro e Criptografado</h1>
+    <p data-t="hero-desc">Proteja os dados dos seus pacientes com criptografia de nível militar. Sistema completo de agendamento médico com armazenamento seguro no MongoDB Atlas.</p>
     <div class="hero-buttons">
-      <a href="https://github.com/jonnathanimperio/medical-safe-gold/releases/download/v1.0.0/Medical.Safe.Gold.Setup.1.0.0.exe" class="btn-download">
+      <a href="https://github.com/jonnathanimperio/medical-safe-gold/releases/download/v1.2.0/Medical.Safe.Gold.Setup.1.2.0.exe" class="btn-download">
         <span class="material-icons-round">download</span>
         <span data-t="btn-install">BAIXAR PARA WINDOWS</span>
       </a>
       <a href="#preview" class="btn-demo">
         <span class="material-icons-round" style="font-size:18px;">play_circle</span>
-        <span data-t="btn-preview">VER DEMONSTRACAO</span>
+        <span data-t="btn-preview">VER DEMONSTRAÇÃO</span>
       </a>
     </div>
     <div class="download-info">
-      <span data-t="dl-info">Windows 10/11</span> &bull; v1.0.0 &bull; 74 MB &bull; <span data-t="dl-free">Instalacao gratuita</span>
+      <span data-t="dl-info">Windows 10/11</span> &bull; v1.2.0 &bull; 74 MB &bull; <span data-t="dl-free">Instalação gratuita</span>
     </div>
     <div class="trust-badges">
       <div class="trust-badge"><span class="material-icons-round">lock</span><span data-t="trust-1">Criptografia AES-256</span></div>
@@ -410,50 +709,20 @@
   </section>
 
   <section class="app-preview" id="preview">
-    <h2 class="app-preview-title" data-t="preview-title">Veja o App em Acao</h2>
+    <h2 class="app-preview-title" data-t="preview-title">Veja o App em Ação</h2>
     <p class="app-preview-subtitle" data-t="preview-subtitle">Interface profissional com dados protegidos por criptografia AES-256</p>
     <div class="app-window">
       <div class="app-titlebar">
         <div class="app-dot red"></div><div class="app-dot yellow"></div><div class="app-dot green"></div>
-        <div class="app-titlebar-text">Medical Safe Gold</div>
+        <div class="app-titlebar-text">Medical Safe Gold - Demo</div>
         <div style="width:52px;"></div>
       </div>
-      <div class="app-content">
-        <div class="app-sidebar">
-          <div class="app-sidebar-header">
-            <div class="app-sidebar-logo"><span class="material-icons-round">shield</span></div>
-            <div class="app-sidebar-name">Medical Safe Gold</div>
-          </div>
-          <div class="app-menu-item active"><span class="material-icons-round">calendar_month</span><span data-t="menu-appointments">Consultas</span></div>
-          <div class="app-menu-item"><span class="material-icons-round">person_search</span><span data-t="menu-search">Pesquisar</span></div>
-          <div class="app-menu-item"><span class="material-icons-round">notifications</span><span data-t="menu-alerts">Alertas</span></div>
-          <div class="app-menu-item"><span class="material-icons-round">settings</span><span data-t="menu-settings">Configuracoes</span></div>
-          <div class="app-menu-item"><span class="material-icons-round">vpn_key</span><span data-t="menu-license">Licenca</span></div>
-        </div>
-        <div class="app-main">
-          <div class="app-main-header">
-            <div class="app-main-title" data-t="main-title">Consultas de Hoje</div>
-            <div class="app-main-date">28/03 - 14:32:05</div>
-          </div>
-          <div class="app-card-row">
-            <div class="app-stat-card"><div class="app-stat-label" data-t="stat-today">HOJE</div><div class="app-stat-value">8</div></div>
-            <div class="app-stat-card"><div class="app-stat-label" data-t="stat-week">SEMANA</div><div class="app-stat-value">34</div></div>
-            <div class="app-stat-card"><div class="app-stat-label" data-t="stat-confirmed">CONFIRMADOS</div><div class="app-stat-value green">6</div></div>
-          </div>
-          <div class="app-appointment-list">
-            <div class="app-appointment">
-              <div class="app-apt-info"><div class="app-apt-avatar"><span class="material-icons-round">person</span></div><div><div class="app-apt-name">Maria Silva</div><div class="app-apt-type" data-t="apt-type-1">Consulta de rotina</div></div></div>
-              <div class="app-apt-time">09:00</div><div class="app-apt-badge" data-t="apt-confirmed">CONFIRMADO</div>
-            </div>
-            <div class="app-appointment">
-              <div class="app-apt-info"><div class="app-apt-avatar"><span class="material-icons-round">person</span></div><div><div class="app-apt-name">Joao Santos</div><div class="app-apt-type" data-t="apt-type-2">Exame laboratorial</div></div></div>
-              <div class="app-apt-time">10:30</div><div class="app-apt-badge" data-t="apt-confirmed">CONFIRMADO</div>
-            </div>
-            <div class="app-appointment">
-              <div class="app-apt-info"><div class="app-apt-avatar"><span class="material-icons-round">person</span></div><div><div class="app-apt-name">Ana Oliveira</div><div class="app-apt-type" data-t="apt-type-3">Retorno medico</div></div></div>
-              <div class="app-apt-time">14:00</div><div class="app-apt-badge" style="background:rgba(212,175,55,0.1);color:var(--gold);" data-t="apt-pending">PENDENTE</div>
-            </div>
-          </div>
+      <div style="position:relative;background:#0a0a0f;">
+        <video id="demo-video" autoplay muted loop playsinline style="width:100%;display:block;border-radius:0 0 16px 16px;">
+          <source src="https://github.com/jonnathanimperio/medical-safe-gold/releases/download/v1.1.0/demo-video.mp4" type="video/mp4">
+        </video>
+        <div id="video-play-overlay" onclick="document.getElementById('demo-video').play();this.style.display='none';" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(0,0,0,0.3);border-radius:0 0 16px 16px;transition:opacity 0.3s;">
+          <span class="material-icons-round" style="font-size:64px;color:var(--gold);filter:drop-shadow(0 2px 8px rgba(0,0,0,0.5));">play_circle_filled</span>
         </div>
       </div>
     </div>
@@ -461,38 +730,38 @@
 
   <section class="screenshots">
     <div class="screenshots-grid">
-      <div class="screenshot-card"><div class="screenshot-icon"><span class="material-icons-round">login</span></div><h3 data-t="screen-1-title">Login Seguro</h3><p data-t="screen-1-desc">Autenticacao com criptografia. Recuperacao de senha por email com codigo de verificacao.</p></div>
-      <div class="screenshot-card"><div class="screenshot-icon"><span class="material-icons-round">event_note</span></div><h3 data-t="screen-2-title">Gerencie Consultas</h3><p data-t="screen-2-desc">Adicione, edite e exclua consultas. Visualize por dia, semana e mes com interface intuitiva.</p></div>
+      <div class="screenshot-card"><div class="screenshot-icon"><span class="material-icons-round">login</span></div><h3 data-t="screen-1-title">Login Seguro</h3><p data-t="screen-1-desc">Autenticação com criptografia. Recuperação de senha por email com código de verificação.</p></div>
+      <div class="screenshot-card"><div class="screenshot-icon"><span class="material-icons-round">event_note</span></div><h3 data-t="screen-2-title">Gerencie Consultas</h3><p data-t="screen-2-desc">Adicione, edite e exclua consultas. Visualize por dia, semana e mês com interface intuitiva.</p></div>
       <div class="screenshot-card"><div class="screenshot-icon"><span class="material-icons-round">admin_panel_settings</span></div><h3 data-t="screen-3-title">Painel Administrativo</h3><p data-t="screen-3-desc">Gerencie licencas, usuarios e configuracoes do sistema em um painel completo.</p></div>
     </div>
   </section>
 
   <section class="features" id="features">
     <h2 class="features-title" data-t="features-title">Recursos Principais</h2>
-    <p class="features-subtitle" data-t="features-subtitle">Tudo que voce precisa para gerenciar consultas com seguranca</p>
+    <p class="features-subtitle" data-t="features-subtitle">Tudo que você precisa para gerenciar consultas com segurança</p>
     <div class="features-grid">
-      <div class="feature-card"><div class="feature-icon"><span class="material-icons-round">encrypted</span></div><h3 data-t="feat-1-title">Criptografia AES-256</h3><p data-t="feat-1-desc">Todos os dados sao criptografados com algoritmo de nivel militar antes de serem armazenados.</p></div>
-      <div class="feature-card"><div class="feature-icon"><span class="material-icons-round">cloud_sync</span></div><h3 data-t="feat-2-title">Backup na Nuvem</h3><p data-t="feat-2-desc">Armazenamento seguro no MongoDB Atlas com sincronizacao automatica.</p></div>
-      <div class="feature-card"><div class="feature-icon"><span class="material-icons-round">calendar_month</span></div><h3 data-t="feat-3-title">Agendamento Completo</h3><p data-t="feat-3-desc">Gerencie consultas, procedimentos e horarios de forma organizada e segura.</p></div>
-      <div class="feature-card"><div class="feature-icon"><span class="material-icons-round">notifications_active</span></div><h3 data-t="feat-4-title">Central de Alertas</h3><p data-t="feat-4-desc">Alertas automaticos para compromissos da semana com notificacoes em tempo real.</p></div>
-      <div class="feature-card"><div class="feature-icon"><span class="material-icons-round">search</span></div><h3 data-t="feat-5-title">Pesquisa Rapida</h3><p data-t="feat-5-desc">Encontre pacientes e registros instantaneamente no cofre criptografado.</p></div>
-      <div class="feature-card"><div class="feature-icon"><span class="material-icons-round">translate</span></div><h3 data-t="feat-6-title">Multi-idioma</h3><p data-t="feat-6-desc">Interface em Portugues, Ingles, Alemao e Espanhol. Detecta o idioma do sistema.</p></div>
+      <div class="feature-card"><div class="feature-icon"><span class="material-icons-round">encrypted</span></div><h3 data-t="feat-1-title">Criptografia AES-256</h3><p data-t="feat-1-desc">Todos os dados são criptografados com algoritmo de nível militar antes de serem armazenados.</p></div>
+      <div class="feature-card"><div class="feature-icon"><span class="material-icons-round">cloud_sync</span></div><h3 data-t="feat-2-title">Backup na Nuvem</h3><p data-t="feat-2-desc">Armazenamento seguro no MongoDB Atlas com sincronização automática.</p></div>
+      <div class="feature-card"><div class="feature-icon"><span class="material-icons-round">calendar_month</span></div><h3 data-t="feat-3-title">Agendamento Completo</h3><p data-t="feat-3-desc">Gerencie consultas, procedimentos e horários de forma organizada e segura.</p></div>
+      <div class="feature-card"><div class="feature-icon"><span class="material-icons-round">notifications_active</span></div><h3 data-t="feat-4-title">Central de Alertas</h3><p data-t="feat-4-desc">Alertas automáticos para compromissos da semana com notificações em tempo real.</p></div>
+      <div class="feature-card"><div class="feature-icon"><span class="material-icons-round">search</span></div><h3 data-t="feat-5-title">Pesquisa Rápida</h3><p data-t="feat-5-desc">Encontre pacientes e registros instantaneamente no cofre criptografado.</p></div>
+      <div class="feature-card"><div class="feature-icon"><span class="material-icons-round">translate</span></div><h3 data-t="feat-6-title">Multi-idioma</h3><p data-t="feat-6-desc">Interface em Português, Inglês, Alemão e Espanhol. Detecta o idioma do sistema.</p></div>
     </div>
   </section>
 
   <section class="pricing" id="pricing">
-    <h2 class="pricing-title" data-t="pricing-title">Planos e Precos</h2>
-    <p class="pricing-subtitle" data-t="pricing-subtitle">Escolha o plano ideal para sua clinica ou consultorio</p>
+    <h2 class="pricing-title" data-t="pricing-title">Planos e Preços</h2>
+    <p class="pricing-subtitle" data-t="pricing-subtitle">Escolha o plano ideal para sua clínica ou consultório</p>
     <div class="pricing-grid">
       <div class="pricing-card">
         <div class="pricing-plan" data-t="plan-sub">ASSINATURA MENSAL</div>
         <div class="pricing-price">R$ 69<span>/mes</span></div>
-        <div class="pricing-desc" data-t="plan-sub-desc">Acesso completo com atualizacoes mensais</div>
+        <div class="pricing-desc" data-t="plan-sub-desc">Acesso completo com atualizações mensais</div>
         <ul class="pricing-features">
           <li><span class="material-icons-round">check_circle</span><span data-t="plan-f1">Todas as funcionalidades</span></li>
           <li><span class="material-icons-round">check_circle</span><span data-t="plan-f2">Criptografia AES-256</span></li>
           <li><span class="material-icons-round">check_circle</span><span data-t="plan-f3">Backup na nuvem Atlas</span></li>
-          <li><span class="material-icons-round">check_circle</span><span data-t="plan-f4">Atualizacoes automaticas</span></li>
+          <li><span class="material-icons-round">check_circle</span><span data-t="plan-f4">Atualizações automáticas</span></li>
           <li><span class="material-icons-round">check_circle</span><span data-t="plan-f5">Suporte por e-mail</span></li>
         </ul>
         <button class="btn-buy outline" onclick="startCheckout('monthly')" data-t="btn-subscribe">ASSINAR MENSAL</button>
@@ -507,8 +776,8 @@
           <li><span class="material-icons-round">check_circle</span><span data-t="plan-f2">Criptografia AES-256</span></li>
           <li><span class="material-icons-round">check_circle</span><span data-t="plan-f3">Backup na nuvem Atlas</span></li>
           <li><span class="material-icons-round">check_circle</span><span data-t="plan-f6">Economia de 34%</span></li>
-          <li><span class="material-icons-round">check_circle</span><span data-t="plan-f7">Suporte prioritario</span></li>
-          <li><span class="material-icons-round">check_circle</span><span data-t="plan-f8">Atualizacoes automaticas</span></li>
+          <li><span class="material-icons-round">check_circle</span><span data-t="plan-f7">Suporte prioritário</span></li>
+          <li><span class="material-icons-round">check_circle</span><span data-t="plan-f8">Atualizações automáticas</span></li>
         </ul>
         <button class="btn-buy" onclick="startCheckout('annual')" data-t="btn-buy-annual">ASSINAR ANUAL</button>
       </div>
@@ -518,8 +787,8 @@
   <section class="cta-section">
     <div class="cta-box">
       <h2 data-t="cta-title">Pronto para Proteger seus Dados?</h2>
-      <p data-t="cta-desc">Baixe agora e comece a usar em menos de 2 minutos. Instalacao simples e rapida.</p>
-      <a href="https://github.com/jonnathanimperio/medical-safe-gold/releases/download/v1.0.0/Medical.Safe.Gold.Setup.1.0.0.exe" class="btn-download" style="display:inline-flex;">
+      <p data-t="cta-desc">Baixe agora e comece a usar em menos de 2 minutos. Instalação simples e rápida.</p>
+      <a href="https://github.com/jonnathanimperio/medical-safe-gold/releases/download/v1.2.0/Medical.Safe.Gold.Setup.1.2.0.exe" class="btn-download" style="display:inline-flex;">
         <span class="material-icons-round">download</span>
         <span data-t="cta-btn">INSTALAR AGORA</span>
       </a>
@@ -529,11 +798,11 @@
   <section class="legal-section" id="legal">
     <h2 class="legal-title" data-t="legal-title">Documentos Legais</h2>
     <div class="legal-grid">
-      <a class="legal-card" id="eula-link" href="EULA_pt.md" target="_blank"><div class="legal-icon"><span class="material-icons-round">gavel</span></div><div><h4 data-t="eula-title">Termos de Uso (EULA)</h4><p data-t="eula-desc">Contrato de Licenca de Uso do Usuario Final</p></div></a>
-      <a class="legal-card" id="privacy-link" href="privacy.html" target="_blank"><div class="legal-icon"><span class="material-icons-round">privacy_tip</span></div><div><h4 data-t="privacy-title">Politica de Privacidade</h4><p data-t="privacy-desc">Como protegemos seus dados e informacoes</p></div></a>
+      <a class="legal-card" id="eula-link" href="EULA_pt.md" target="_blank"><div class="legal-icon"><span class="material-icons-round">gavel</span></div><div><h4 data-t="eula-title">Termos de Uso (EULA)</h4><p data-t="eula-desc">Contrato de Licença de Uso do Usuário Final</p></div></a>
+      <a class="legal-card" id="privacy-link" href="privacy.html" target="_blank"><div class="legal-icon"><span class="material-icons-round">privacy_tip</span></div><div><h4 data-t="privacy-title">Política de Privacidade</h4><p data-t="privacy-desc">Como protegemos seus dados e informações</p></div></a>
     </div>
     <div style="text-align:center;margin-top:20px;">
-      <p style="font-size:12px;color:var(--text-muted);" data-t="legal-note">Ao adquirir o Medical Safe Gold, voce concorda com nossos Termos de Uso e Politica de Privacidade. Pagamentos processados via gateway externo seguro (Mercado Pago). Dados de cartao NAO sao armazenados. Direito de arrependimento: 7 dias (CDC - Brasil).</p>
+      <p style="font-size:12px;color:var(--text-muted);" data-t="legal-note">Ao adquirir o Medical Safe Gold, você concorda com nossos Termos de Uso e Política de Privacidade. Pagamentos processados via gateway externo seguro (Mercado Pago). Dados de cartão NÃO são armazenados. Direito de arrependimento: 7 dias (CDC - Brasil).</p>
     </div>
   </section>
 
@@ -544,7 +813,7 @@
       <h2 id="modal-title">Finalizar Compra</h2>
       <p id="modal-plan-info">Plano Mensal - R$ 69/mes</p>
       <input type="email" class="modal-input" id="checkout-email" placeholder="Seu e-mail para receber a licenca">
-      <p class="modal-error" id="modal-error">Por favor, insira um e-mail valido.</p>
+      <p class="modal-error" id="modal-error">Por favor, insira um e-mail válido.</p>
       <button class="modal-btn" id="modal-submit" onclick="submitCheckout()">PAGAR COM MERCADO PAGO</button>
     </div>
   </div>
@@ -558,40 +827,40 @@
   <script>
     var i18n = {
       pt: {
-        "nav-preview":"Conhecer","nav-features":"Recursos","nav-pricing":"Planos","nav-legal":"Legal","nav-install":"INSTALAR",
-        "hero-badge":"CRIPTOGRAFIA MILITAR AES-256","hero-title":"Agendamento Medico Seguro e Criptografado",
-        "hero-desc":"Proteja os dados dos seus pacientes com criptografia de nivel militar. Sistema completo de agendamento medico com armazenamento seguro no MongoDB Atlas.",
-        "btn-install":"BAIXAR PARA WINDOWS","btn-preview":"VER DEMONSTRACAO","dl-info":"Windows 10/11","dl-free":"Instalacao gratuita",
+        "nav-preview":"Conhecer","nav-features":"Recursos","nav-pricing":"Planos","nav-how":"Como Funciona","nav-legal":"Legal","nav-install":"INSTALAR",
+        "hero-badge":"CRIPTOGRAFIA MILITAR AES-256","hero-title":"Agendamento Médico Seguro e Criptografado",
+        "hero-desc":"Proteja os dados dos seus pacientes com criptografia de nível militar. Sistema completo de agendamento médico com armazenamento seguro no MongoDB Atlas.",
+        "btn-install":"BAIXAR PARA WINDOWS","btn-preview":"VER DEMONSTRAÇÃO","dl-info":"Windows 10/11","dl-free":"Instalação gratuita",
         "trust-1":"Criptografia AES-256","trust-2":"Backup na Nuvem","trust-3":"LGPD / GDPR",
-        "preview-title":"Veja o App em Acao","preview-subtitle":"Interface profissional com dados protegidos por criptografia AES-256",
-        "menu-appointments":"Consultas","menu-search":"Pesquisar","menu-alerts":"Alertas","menu-settings":"Configuracoes","menu-license":"Licenca",
+        "preview-title":"Veja o App em Ação","preview-subtitle":"Interface profissional com dados protegidos por criptografia AES-256",
+        "menu-appointments":"Consultas","menu-search":"Pesquisar","menu-alerts":"Alertas","menu-settings":"Configurações","menu-license":"Licença",
         "main-title":"Consultas de Hoje","stat-today":"HOJE","stat-week":"SEMANA","stat-confirmed":"CONFIRMADOS",
-        "apt-type-1":"Consulta de rotina","apt-type-2":"Exame laboratorial","apt-type-3":"Retorno medico","apt-confirmed":"CONFIRMADO","apt-pending":"PENDENTE",
-        "screen-1-title":"Login Seguro","screen-1-desc":"Autenticacao com criptografia. Recuperacao de senha por email com codigo de verificacao.",
-        "screen-2-title":"Gerencie Consultas","screen-2-desc":"Adicione, edite e exclua consultas. Visualize por dia, semana e mes com interface intuitiva.",
-        "screen-3-title":"Painel Administrativo","screen-3-desc":"Gerencie licencas, usuarios e configuracoes do sistema em um painel completo.",
-        "features-title":"Recursos Principais","features-subtitle":"Tudo que voce precisa para gerenciar consultas com seguranca",
-        "feat-1-title":"Criptografia AES-256","feat-1-desc":"Todos os dados sao criptografados com algoritmo de nivel militar antes de serem armazenados.",
-        "feat-2-title":"Backup na Nuvem","feat-2-desc":"Armazenamento seguro no MongoDB Atlas com sincronizacao automatica.",
-        "feat-3-title":"Agendamento Completo","feat-3-desc":"Gerencie consultas, procedimentos e horarios de forma organizada e segura.",
-        "feat-4-title":"Central de Alertas","feat-4-desc":"Alertas automaticos para compromissos da semana com notificacoes em tempo real.",
-        "feat-5-title":"Pesquisa Rapida","feat-5-desc":"Encontre pacientes e registros instantaneamente no cofre criptografado.",
-        "feat-6-title":"Multi-idioma","feat-6-desc":"Interface em Portugues, Ingles, Alemao e Espanhol. Detecta o idioma do sistema.",
-        "pricing-title":"Planos e Precos","pricing-subtitle":"Escolha o plano ideal para sua clinica ou consultorio",
-        "plan-sub":"ASSINATURA MENSAL","plan-sub-desc":"Acesso completo com atualizacoes mensais",
+        "apt-type-1":"Consulta de rotina","apt-type-2":"Exame laboratorial","apt-type-3":"Retorno médico","apt-confirmed":"CONFIRMADO","apt-pending":"PENDENTE",
+        "screen-1-title":"Login Seguro","screen-1-desc":"Autenticação com criptografia. Recuperação de senha por email com código de verificação.",
+        "screen-2-title":"Gerencie Consultas","screen-2-desc":"Adicione, edite e exclua consultas. Visualize por dia, semana e mês com interface intuitiva.",
+        "screen-3-title":"Painel Administrativo","screen-3-desc":"Gerencie licenças, usuários e configurações do sistema em um painel completo.",
+        "features-title":"Recursos Principais","features-subtitle":"Tudo que você precisa para gerenciar consultas com segurança",
+        "feat-1-title":"Criptografia AES-256","feat-1-desc":"Todos os dados são criptografados com algoritmo de nível militar antes de serem armazenados.",
+        "feat-2-title":"Backup na Nuvem","feat-2-desc":"Armazenamento seguro no MongoDB Atlas com sincronização automática.",
+        "feat-3-title":"Agendamento Completo","feat-3-desc":"Gerencie consultas, procedimentos e horários de forma organizada e segura.",
+        "feat-4-title":"Central de Alertas","feat-4-desc":"Alertas automáticos para compromissos da semana com notificações em tempo real.",
+        "feat-5-title":"Pesquisa Rápida","feat-5-desc":"Encontre pacientes e registros instantaneamente no cofre criptografado.",
+        "feat-6-title":"Multi-idioma","feat-6-desc":"Interface em Português, Inglês, Alemão e Espanhol. Detecta o idioma do sistema.",
+        "pricing-title":"Planos e Preços","pricing-subtitle":"Escolha o plano ideal para sua clínica ou consultório",
+        "plan-sub":"ASSINATURA MENSAL","plan-sub-desc":"Acesso completo com atualizações mensais",
         "plan-annual":"PLANO ANUAL","plan-annual-desc":"Economize com o plano anual",
         "plan-f1":"Todas as funcionalidades","plan-f2":"Criptografia AES-256","plan-f3":"Backup na nuvem Atlas",
-        "plan-f4":"Atualizacoes automaticas","plan-f5":"Suporte por e-mail",
-        "plan-f6":"Economia de 34%","plan-f7":"Suporte prioritario","plan-f8":"Atualizacoes automaticas",
+        "plan-f4":"Atualizações automáticas","plan-f5":"Suporte por e-mail",
+        "plan-f6":"Economia de 34%","plan-f7":"Suporte prioritário","plan-f8":"Atualizações automáticas",
         "btn-subscribe":"ASSINAR MENSAL","btn-buy-annual":"ASSINAR ANUAL","popular":"MAIS POPULAR",
-        "cta-title":"Pronto para Proteger seus Dados?","cta-desc":"Baixe agora e comece a usar em menos de 2 minutos. Instalacao simples e rapida.","cta-btn":"INSTALAR AGORA",
-        "legal-title":"Documentos Legais","eula-title":"Termos de Uso (EULA)","eula-desc":"Contrato de Licenca de Uso do Usuario Final",
-        "privacy-title":"Politica de Privacidade","privacy-desc":"Como protegemos seus dados e informacoes",
-        "legal-note":"Ao adquirir o Medical Safe Gold, voce concorda com nossos Termos de Uso e Politica de Privacidade. Pagamentos processados via gateway externo seguro (Mercado Pago). Dados de cartao NAO sao armazenados. Direito de arrependimento: 7 dias (CDC - Brasil).",
-        "footer-rights":"Todos os direitos reservados.","eula-file":"EULA_pt.md","privacy-file":"privacy.html"
+        "cta-title":"Pronto para Proteger seus Dados?","cta-desc":"Baixe agora e comece a usar em menos de 2 minutos. Instalação simples e rápida.","cta-btn":"INSTALAR AGORA",
+        "legal-title":"Documentos Legais","eula-title":"Termos de Uso (EULA)","eula-desc":"Contrato de Licença de Uso do Usuário Final",
+        "privacy-title":"Política de Privacidade","privacy-desc":"Como protegemos seus dados e informações",
+        "legal-note":"Ao adquirir o Medical Safe Gold, você concorda com nossos Termos de Uso e Política de Privacidade. Pagamentos processados via gateway externo seguro (Mercado Pago). Dados de cartão NÃO são armazenados. Direito de arrependimento: 7 dias (CDC - Brasil).",
+        "wpp-tooltip":"Fale conosco!","hiw-title":"Como Funciona","hiw-subtitle":"Comece a usar em 3 passos simples","hiw-step1-title":"Baixe e Instale","hiw-step1-desc":"Faça o download gratuito, instale em segundos no seu Windows e ative com sua chave de licença.","hiw-step2-title":"Cadastre Pacientes","hiw-step2-desc":"Adicione seus pacientes com dados criptografados. Agende consultas por dia, semana ou mês.","hiw-step3-title":"Gerencie com Segurança","hiw-step3-desc":"Prontuário eletrônico, alertas automáticos e confirmação via WhatsApp. Tudo protegido com AES-256.","footer-product":"Produto","footer-features":"Recursos","footer-pricing":"Planos e Preços","footer-how":"Como Funciona","footer-legal-title":"Legal","footer-eula":"Termos de Uso","footer-privacy":"Política de Privacidade","footer-contact":"Contato","footer-rights":"Todos os direitos reservados.","eula-file":"EULA_pt.md","privacy-file":"privacy.html"
       },
       en: {
-        "nav-preview":"Preview","nav-features":"Features","nav-pricing":"Plans","nav-legal":"Legal","nav-install":"INSTALL",
+        "nav-preview":"Preview","nav-features":"Features","nav-pricing":"Plans","nav-how":"How It Works","nav-legal":"Legal","nav-install":"INSTALL",
         "hero-badge":"MILITARY-GRADE AES-256 ENCRYPTION","hero-title":"Secure and Encrypted Medical Scheduling",
         "hero-desc":"Protect your patients data with military-grade encryption. Complete medical scheduling system with secure storage on MongoDB Atlas.",
         "btn-install":"DOWNLOAD FOR WINDOWS","btn-preview":"SEE DEMO","dl-info":"Windows 10/11","dl-free":"Free installation",
@@ -621,10 +890,10 @@
         "legal-title":"Legal Documents","eula-title":"Terms of Use (EULA)","eula-desc":"End User License Agreement",
         "privacy-title":"Privacy Policy","privacy-desc":"How we protect your data and information",
         "legal-note":"By purchasing Medical Safe Gold, you agree to our Terms of Use and Privacy Policy. Payments processed via secure external gateway (Mercado Pago). Card data is NOT stored. Right of withdrawal: 7 days.",
-        "footer-rights":"All rights reserved.","eula-file":"EULA_en.md","privacy-file":"privacy.html"
+        "wpp-tooltip":"Talk to us!","hiw-title":"How It Works","hiw-subtitle":"Get started in 3 simple steps","hiw-step1-title":"Download & Install","hiw-step1-desc":"Free download, install in seconds on your Windows and activate with your license key.","hiw-step2-title":"Register Patients","hiw-step2-desc":"Add patients with encrypted data. Schedule appointments by day, week or month.","hiw-step3-title":"Manage Securely","hiw-step3-desc":"Electronic medical records, automatic alerts and WhatsApp confirmation. All protected with AES-256.","footer-product":"Product","footer-features":"Features","footer-pricing":"Plans & Pricing","footer-how":"How It Works","footer-legal-title":"Legal","footer-eula":"Terms of Use","footer-privacy":"Privacy Policy","footer-contact":"Contact","footer-rights":"All rights reserved.","eula-file":"EULA_en.md","privacy-file":"privacy.html"
       },
       de: {
-        "nav-preview":"Vorschau","nav-features":"Funktionen","nav-pricing":"Plaene","nav-legal":"Rechtliches","nav-install":"INSTALLIEREN",
+        "nav-preview":"Vorschau","nav-features":"Funktionen","nav-pricing":"Plaene","nav-how":"So funktioniert es","nav-legal":"Rechtliches","nav-install":"INSTALLIEREN",
         "hero-badge":"MILITAERISCHE AES-256-VERSCHLUESSELUNG","hero-title":"Sichere und Verschluesselte Medizinische Terminplanung",
         "hero-desc":"Schuetzen Sie die Daten Ihrer Patienten mit militaerischer Verschluesselung. Komplettes medizinisches Terminplanungssystem mit sicherer Speicherung auf MongoDB Atlas.",
         "btn-install":"FUER WINDOWS HERUNTERLADEN","btn-preview":"DEMO ANSEHEN","dl-info":"Windows 10/11","dl-free":"Kostenlose Installation",
@@ -654,40 +923,40 @@
         "legal-title":"Rechtliche Dokumente","eula-title":"Nutzungsbedingungen (EULA)","eula-desc":"Endbenutzer-Lizenzvereinbarung",
         "privacy-title":"Datenschutzrichtlinie","privacy-desc":"Wie wir Ihre Daten und Informationen schuetzen",
         "legal-note":"Mit dem Kauf von Medical Safe Gold stimmen Sie unseren Nutzungsbedingungen und der Datenschutzrichtlinie zu. Zahlungen ueber sicheren externen Gateway (Mercado Pago). Kartendaten werden NICHT gespeichert. Widerrufsrecht: 7 Tage.",
-        "footer-rights":"Alle Rechte vorbehalten.","eula-file":"EULA_de.md","privacy-file":"privacy.html"
+        "wpp-tooltip":"Sprechen Sie mit uns!","hiw-title":"So funktioniert es","hiw-subtitle":"In 3 einfachen Schritten starten","hiw-step1-title":"Herunterladen","hiw-step1-desc":"Kostenloser Download, Installation in Sekunden auf Windows und Aktivierung mit Ihrem Lizenzschluessel.","hiw-step2-title":"Patienten registrieren","hiw-step2-desc":"Fuegen Sie Patienten mit verschluesselten Daten hinzu. Termine nach Tag, Woche oder Monat planen.","hiw-step3-title":"Sicher verwalten","hiw-step3-desc":"Elektronische Patientenakte, automatische Benachrichtigungen und WhatsApp-Bestaetigung. Alles mit AES-256 geschuetzt.","footer-product":"Produkt","footer-features":"Funktionen","footer-pricing":"Preise","footer-how":"So funktioniert es","footer-legal-title":"Rechtliches","footer-eula":"Nutzungsbedingungen","footer-privacy":"Datenschutz","footer-contact":"Kontakt","footer-rights":"Alle Rechte vorbehalten.","eula-file":"EULA_de.md","privacy-file":"privacy.html"
       },
       es: {
-        "nav-preview":"Conocer","nav-features":"Recursos","nav-pricing":"Planes","nav-legal":"Legal","nav-install":"INSTALAR",
-        "hero-badge":"CIFRADO MILITAR AES-256","hero-title":"Programacion Medica Segura y Cifrada",
-        "hero-desc":"Proteja los datos de sus pacientes con cifrado de grado militar. Sistema completo de programacion medica con almacenamiento seguro en MongoDB Atlas.",
-        "btn-install":"DESCARGAR PARA WINDOWS","btn-preview":"VER DEMOSTRACION","dl-info":"Windows 10/11","dl-free":"Instalacion gratuita",
+        "nav-preview":"Conocer","nav-features":"Recursos","nav-pricing":"Planes","nav-how":"Cómo Funciona","nav-legal":"Legal","nav-install":"INSTALAR",
+        "hero-badge":"CIFRADO MILITAR AES-256","hero-title":"Programación Médica Segura y Cifrada",
+        "hero-desc":"Proteja los datos de sus pacientes con cifrado de grado militar. Sistema completo de programación médica con almacenamiento seguro en MongoDB Atlas.",
+        "btn-install":"DESCARGAR PARA WINDOWS","btn-preview":"VER DEMOSTRACIÓN","dl-info":"Windows 10/11","dl-free":"Instalación gratuita",
         "trust-1":"Cifrado AES-256","trust-2":"Backup en la Nube","trust-3":"LGPD / GDPR",
-        "preview-title":"Vea la App en Accion","preview-subtitle":"Interfaz profesional con datos protegidos por cifrado AES-256",
-        "menu-appointments":"Citas","menu-search":"Buscar","menu-alerts":"Alertas","menu-settings":"Configuracion","menu-license":"Licencia",
+        "preview-title":"Vea la App en Acción","preview-subtitle":"Interfaz profesional con datos protegidos por cifrado AES-256",
+        "menu-appointments":"Citas","menu-search":"Buscar","menu-alerts":"Alertas","menu-settings":"Configuración","menu-license":"Licencia",
         "main-title":"Citas de Hoy","stat-today":"HOY","stat-week":"SEMANA","stat-confirmed":"CONFIRMADOS",
         "apt-type-1":"Consulta de rutina","apt-type-2":"Examen de laboratorio","apt-type-3":"Visita de seguimiento","apt-confirmed":"CONFIRMADO","apt-pending":"PENDIENTE",
-        "screen-1-title":"Inicio de Sesion Seguro","screen-1-desc":"Autenticacion cifrada. Recuperacion de contrasena por email con codigo de verificacion.",
-        "screen-2-title":"Gestionar Citas","screen-2-desc":"Agregue, edite y elimine citas. Visualice por dia, semana y mes con interfaz intuitiva.",
+        "screen-1-title":"Inicio de Sesión Seguro","screen-1-desc":"Autenticación cifrada. Recuperación de contraseña por email con código de verificación.",
+        "screen-2-title":"Gestionar Citas","screen-2-desc":"Agregue, edite y elimine citas. Visualice por día, semana y mes con interfaz intuitiva.",
         "screen-3-title":"Panel Administrativo","screen-3-desc":"Gestione licencias, usuarios y configuraciones del sistema en un panel completo.",
         "features-title":"Recursos Principales","features-subtitle":"Todo lo que necesita para gestionar citas con seguridad",
         "feat-1-title":"Cifrado AES-256","feat-1-desc":"Todos los datos se cifran con algoritmo de grado militar antes de almacenarse.",
-        "feat-2-title":"Backup en la Nube","feat-2-desc":"Almacenamiento seguro en MongoDB Atlas con sincronizacion automatica.",
+        "feat-2-title":"Backup en la Nube","feat-2-desc":"Almacenamiento seguro en MongoDB Atlas con sincronización automática.",
         "feat-3-title":"Programacion Completa","feat-3-desc":"Gestione citas, procedimientos y horarios de forma organizada y segura.",
-        "feat-4-title":"Centro de Alertas","feat-4-desc":"Alertas automaticas para citas de la semana con notificaciones en tiempo real.",
-        "feat-5-title":"Busqueda Rapida","feat-5-desc":"Encuentre pacientes y registros instantaneamente en la boveda cifrada.",
-        "feat-6-title":"Multi-idioma","feat-6-desc":"Interfaz en Portugues, Ingles, Aleman y Espanol. Detecta automaticamente el idioma del sistema.",
-        "pricing-title":"Planes y Precios","pricing-subtitle":"Elija el plan ideal para su clinica o consultorio",
-        "plan-sub":"SUSCRIPCION MENSUAL","plan-sub-desc":"Acceso completo con actualizaciones mensuales",
+        "feat-4-title":"Centro de Alertas","feat-4-desc":"Alertas automáticas para citas de la semana con notificaciones en tiempo real.",
+        "feat-5-title":"Búsqueda Rápida","feat-5-desc":"Encuentre pacientes y registros instantáneamente en la bóveda cifrada.",
+        "feat-6-title":"Multi-idioma","feat-6-desc":"Interfaz en Portugués, Inglés, Alemán y Español. Detecta automáticamente el idioma del sistema.",
+        "pricing-title":"Planes y Precios","pricing-subtitle":"Elija el plan ideal para su clínica o consultorio",
+        "plan-sub":"SUSCRIPCIÓN MENSUAL","plan-sub-desc":"Acceso completo con actualizaciones mensuales",
         "plan-annual":"PLAN ANUAL","plan-annual-desc":"Ahorre con el plan anual",
         "plan-f1":"Todas las funcionalidades","plan-f2":"Cifrado AES-256","plan-f3":"Backup en nube Atlas",
-        "plan-f4":"Actualizaciones automaticas","plan-f5":"Soporte por email",
-        "plan-f6":"Ahorro del 34%","plan-f7":"Soporte prioritario","plan-f8":"Actualizaciones automaticas",
-        "btn-subscribe":"SUSCRIBIR MENSUAL","btn-buy-annual":"SUSCRIBIR ANUAL","popular":"MAS POPULAR",
-        "cta-title":"Listo para Proteger sus Datos?","cta-desc":"Descargue ahora y comience a usar en menos de 2 minutos.","cta-btn":"INSTALAR AHORA",
+        "plan-f4":"Actualizaciones automáticas","plan-f5":"Soporte por email",
+        "plan-f6":"Ahorro del 34%","plan-f7":"Soporte prioritario","plan-f8":"Actualizaciones automáticas",
+        "btn-subscribe":"SUSCRIBIR MENSUAL","btn-buy-annual":"SUSCRIBIR ANUAL","popular":"MÁS POPULAR",
+        "cta-title":"¿Listo para Proteger sus Datos?","cta-desc":"Descargue ahora y comience a usar en menos de 2 minutos.","cta-btn":"INSTALAR AHORA",
         "legal-title":"Documentos Legales","eula-title":"Terminos de Uso (EULA)","eula-desc":"Acuerdo de Licencia de Usuario Final",
-        "privacy-title":"Politica de Privacidad","privacy-desc":"Como protegemos sus datos e informacion",
-        "legal-note":"Al adquirir Medical Safe Gold, usted acepta nuestros Terminos de Uso y Politica de Privacidad. Pagos procesados via gateway externo seguro (Mercado Pago). Datos de tarjeta NO se almacenan. Derecho de desistimiento: 7 dias.",
-        "footer-rights":"Todos los derechos reservados.","eula-file":"EULA_es.md","privacy-file":"privacy.html"
+        "privacy-title":"Política de Privacidad","privacy-desc":"Cómo protegemos sus datos e información",
+        "legal-note":"Al adquirir Medical Safe Gold, usted acepta nuestros Términos de Uso y Política de Privacidad. Pagos procesados vía gateway externo seguro (Mercado Pago). Datos de tarjeta NO se almacenan. Derecho de desistimiento: 7 días.",
+        "wpp-tooltip":"Hable con nosotros!","hiw-title":"Cómo Funciona","hiw-subtitle":"Comience en 3 simples pasos","hiw-step1-title":"Descargue e Instale","hiw-step1-desc":"Descarga gratuita, instale en segundos en su Windows y active con su clave de licencia.","hiw-step2-title":"Registre Pacientes","hiw-step2-desc":"Agregue pacientes con datos cifrados. Programe citas por día, semana o mes.","hiw-step3-title":"Gestione con Seguridad","hiw-step3-desc":"Historial clínico electrónico, alertas automáticas y confirmación vía WhatsApp. Todo protegido con AES-256.","footer-product":"Producto","footer-features":"Recursos","footer-pricing":"Planes y Precios","footer-how":"Cómo Funciona","footer-legal-title":"Legal","footer-eula":"Términos de Uso","footer-privacy":"Política de Privacidad","footer-contact":"Contacto","footer-rights":"Todos los derechos reservados.","eula-file":"EULA_es.md","privacy-file":"privacy.html"
       }
     };
     var currentLang = 'pt';
@@ -706,6 +975,8 @@
       if (privacyLink && dict['privacy-file']) privacyLink.href = dict['privacy-file'];
     }
     var sysLang = (navigator.language || 'pt').substring(0, 2);
+    // Default to PT-BR for Brazilian audience
+    if (['pt','en','de','es'].indexOf(sysLang) === -1) sysLang = 'pt';
     if (['pt','en','de','es'].indexOf(sysLang) !== -1) {
       document.getElementById('lang-select').value = sysLang;
       changeLang(sysLang);
@@ -739,7 +1010,7 @@
       errorEl.style.display = 'none';
       if (plan === 'monthly') {
         title.textContent = 'Assinar Plano Mensal';
-        info.textContent = 'R$ 69/mes - Acesso completo';
+        info.textContent = 'R$ 69/mês - Acesso completo';
       } else {
         title.textContent = 'Assinar Plano Anual';
         info.textContent = 'R$ 549/ano - Economia de 34%';
@@ -764,7 +1035,7 @@
 
       if (!email || email.indexOf('@') === -1 || email.indexOf('.') === -1) {
         errorEl.style.display = 'block';
-        errorEl.textContent = 'Por favor, insira um e-mail valido.';
+        errorEl.textContent = 'Por favor, insira um e-mail válido.';
         return;
       }
       errorEl.style.display = 'none';
@@ -789,7 +1060,7 @@
       })
       .catch(function(err) {
         errorEl.style.display = 'block';
-        errorEl.textContent = 'Erro de conexao. Tente novamente.';
+        errorEl.textContent = 'Erro de conexão. Tente novamente.';
         btn.disabled = false;
         btn.textContent = 'PAGAR COM MERCADO PAGO';
       });
@@ -797,6 +1068,26 @@
 
     document.getElementById('checkout-email').addEventListener('keypress', function(e) {
       if (e.key === 'Enter') submitCheckout();
+    });
+
+    function trackDownload(e) {
+      var link = e.currentTarget;
+      var url = link.href;
+      if (typeof gtag === 'function') {
+        e.preventDefault();
+        var navigated = false;
+        function navigate() {
+          if (!navigated) { navigated = true; window.location.href = url; }
+        }
+        gtag('event', 'Medical_safe_gold', {
+          'transport_type': 'beacon',
+          'event_callback': navigate
+        });
+        setTimeout(navigate, 500);
+      }
+    }
+    document.querySelectorAll('.btn-download, .nav-download-btn').forEach(function(btn) {
+      btn.addEventListener('click', trackDownload);
     });
   </script>
 </body>

@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://medicalsafegold.com/sitemap.xml
+
+# Medical Safe Gold - Software para Clinicas Medicas
+# https://medicalsafegold.com
