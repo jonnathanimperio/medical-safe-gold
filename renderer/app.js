@@ -1725,8 +1725,12 @@ async function saveProntuarioEdit(prontuarioId, patientId) {
 async function editProntuario(prontuarioId, patientId) {
   try {
     const result = await window.api.getProntuarios({ patientId });
+    console.log('[EDIT] getProntuarios result:', result);
+    console.log('[EDIT] Looking for prontuarioId:', prontuarioId);
     if (result.success && result.data) {
+      console.log('[EDIT] Available IDs:', result.data.map(p => p.id));
       const pront = result.data.find(p => p.id === prontuarioId);
+      console.log('[EDIT] Found pront:', pront);
       if (pront) {
         showProntuarioForm(patientId, pront.patient_name, pront);
         return;
