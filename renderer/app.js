@@ -1990,12 +1990,16 @@ async function showRetificacaoForm(prontuarioId) {
 async function verifyProntuarioIntegrity(prontuarioId) {
   try {
     const result = await window.api.verifyProntuario({ prontuarioId });
+    console.log('[VERIFY] Result:', result);
+    console.log('[VERIFY] result.data:', result.data);
+    console.log('[VERIFY] result.data.integrity_valid:', result.data?.integrity_valid);
     if (result.success && result.data && result.data.integrity_valid) {
       showSnack(t('Integridade verificada com sucesso!'));
     } else {
       showSnack(t('Falha na verificacao de integridade!'), true);
     }
   } catch (e) {
+    console.error('[VERIFY] Error:', e);
     showSnack(t('Erro de Conexão'), true);
   }
 }
