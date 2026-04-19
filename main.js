@@ -546,6 +546,7 @@ ipcMain.handle('list-evolucoes', async (event, { prontuarioId }) => {
             const decrypted = decryptData(doc.texto);
             if (decrypted) {
               doc.texto = decrypted.texto || '';
+              doc.descricao = decrypted.texto || '';
               doc.tipo = decrypted.tipo || doc.tipo || '';
             }
           } catch (decErr) {
