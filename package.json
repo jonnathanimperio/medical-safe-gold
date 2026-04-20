@@ -1,6 +1,6 @@
 {
   "name": "medical-safe-gold",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Medical Safe Gold - SaaS Edition | Secure Medical Scheduling",
   "main": "main.js",
   "scripts": {
@@ -8,13 +8,19 @@
     "build": "electron-builder",
     "build:win": "electron-builder --win",
     "build:mac": "electron-builder --mac",
-    "build:linux": "electron-builder --linux"
+    "build:linux": "electron-builder --linux",
+    "publish": "electron-builder --win --publish always"
   },
   "build": {
     "appId": "com.medicalsafegold.app",
     "productName": "Medical Safe Gold",
     "directories": {
       "output": "dist"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "jonnathanimperio",
+      "repo": "medical-safe-gold"
     },
     "files": [
       "main.js",
@@ -42,7 +48,12 @@
       "publisher": "CN=Jonnathan Coelho Silva",
       "publisherDisplayName": "Jonnathan Coelho Silva",
       "displayName": "Medical Safe Gold",
-      "languages": ["pt-BR", "en-US", "de-DE", "es-ES"],
+      "languages": [
+        "pt-BR",
+        "en-US",
+        "de-DE",
+        "es-ES"
+      ],
       "backgroundColor": "#0a0a0f"
     },
     "nsis": {
@@ -51,7 +62,8 @@
       "installerIcon": "assets/icon.ico",
       "uninstallerIcon": "assets/icon.ico",
       "installerHeaderIcon": "assets/icon.ico",
-      "license": "legal/LICENSE.rtf"
+      "license": "legal/LICENSE.rtf",
+      "allowElevation": true
     },
     "mac": {
       "target": "dmg",
@@ -66,6 +78,7 @@
     }
   },
   "dependencies": {
+    "electron-updater": "^6.8.3",
     "fernet": "^0.4.0"
   },
   "devDependencies": {
