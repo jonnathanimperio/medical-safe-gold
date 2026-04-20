@@ -1465,7 +1465,7 @@ function renderProntuarioList(container, prontuarios, patientId) {
       ${p.prescricoes ? `<div class="prontuario-card-field"><div class="prontuario-card-label">${t('PRESCRICOES')}</div><div class="prontuario-card-value">${escapeHtml(p.prescricoes)}</div></div>` : ''}
       ${p.observacoes ? `<div class="prontuario-card-field"><div class="prontuario-card-label">${t('OBSERVACOES')}</div><div class="prontuario-card-value">${escapeHtml(p.observacoes)}</div></div>` : ''}
       <div class="prontuario-card-actions">
-        ${!locked ? `<button class="btn-prontuario btn-sm btn-secondary btn-edit-pront" data-id="${escapeHtml(p.id)}"><span class="material-icons-round">edit</span> ${t('EDITAR')}</button>` : `<button class="btn-prontuario btn-sm btn-secondary btn-retificar-pront" data-id="${escapeHtml(p.id)}"><span class="material-icons-round">history</span> ${t('RETIFICACAO')}</button>`}
+        <button class="btn-prontuario btn-sm btn-secondary btn-retificar-pront" data-id="${escapeHtml(p.id)}"><span class="material-icons-round">history</span> ${t('RETIFICACAO')}</button>
         <button class="btn-prontuario btn-sm btn-secondary btn-exames-pront" data-id="${escapeHtml(p.id)}">
           <span class="material-icons-round">biotech</span> ${t('EXAMES')}
         </button>
@@ -1475,22 +1475,14 @@ function renderProntuarioList(container, prontuarios, patientId) {
         <button class="btn-prontuario btn-sm btn-secondary btn-anexos-pront" data-id="${escapeHtml(p.id)}">
           <span class="material-icons-round">attach_file</span> ${t('ANEXOS')}
         </button>
-        <button class="btn-prontuario btn-sm btn-secondary btn-verify-pront" data-id="${escapeHtml(p.id)}" title="${t('VERIFICAR INTEGRIDADE')}">
-          <span class="material-icons-round">verified_user</span>
-        </button>
+
       </div>
     `;
-    if (!locked) {
-      const editBtn = card.querySelector('.btn-edit-pront');
-      if (editBtn) editBtn.addEventListener('click', () => editProntuario(p.id, patientId));
-    } else {
-      const retBtn = card.querySelector('.btn-retificar-pront');
-      if (retBtn) retBtn.addEventListener('click', () => showRetificacaoForm(p.id));
-    }
+    const retBtn = card.querySelector('.btn-retificar-pront');
+    if (retBtn) retBtn.addEventListener('click', () => showRetificacaoForm(p.id));
     card.querySelector('.btn-exames-pront').addEventListener('click', () => showExamesSection(p.id));
     card.querySelector('.btn-evolucoes-pront').addEventListener('click', () => showEvolucoesTimeline(p.id));
     card.querySelector('.btn-anexos-pront').addEventListener('click', () => viewAnexos(p.id));
-    card.querySelector('.btn-verify-pront').addEventListener('click', () => verifyProntuarioIntegrity(p.id));
     container.appendChild(card);
   });
 }
