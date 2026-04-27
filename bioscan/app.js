@@ -133,6 +133,8 @@
 
     try {
       if (state.model) { state.model.dispose(); }
+      state.model = null;
+      state.modelLoaded = false;
       state.model = await tf.loadGraphModel(reg.path);
       state.modelLoaded = true;
       dom.modelSize.textContent = 'Ativo';
@@ -260,16 +262,18 @@
     var probabilities;
 
     if (state.modelLoaded && state.model) {
+      var output, softmax;
       try {
-        var output = state.model.predict(tensor);
-        var softmax = tf.softmax(output);
+        output = state.model.predict(tensor);
+        softmax = tf.softmax(output);
         probabilities = await softmax.data();
-        output.dispose();
-        softmax.dispose();
         log('Inferencia real concluida', 'success');
       } catch (err) {
         log('Erro na inferencia: ' + err.message + '. Usando fallback.', 'error');
         probabilities = generateSimulatedProbabilities();
+      } finally {
+        if (output) output.dispose();
+        if (softmax) softmax.dispose();
       }
     } else {
       probabilities = generateSimulatedProbabilities();
