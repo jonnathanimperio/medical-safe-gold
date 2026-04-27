@@ -274,32 +274,36 @@
     state.isProcessing = true;
     log('Iniciando inferencia...', 'info');
 
-    var tensor = preprocessImage(imageSource);
-    var probabilities;
+    var tensor;
+    try {
+      tensor = preprocessImage(imageSource);
+      var probabilities;
 
-    if (state.modelLoaded && state.model) {
-      var output, softmax;
-      try {
-        output = state.model.predict(tensor);
-        softmax = tf.softmax(output);
-        probabilities = await softmax.data();
-        log('Inferencia real concluida', 'success');
-      } catch (err) {
-        log('Erro na inferencia: ' + err.message + '. Usando fallback.', 'error');
+      if (state.modelLoaded && state.model) {
+        var output, softmax;
+        try {
+          output = state.model.predict(tensor);
+          softmax = tf.softmax(output);
+          probabilities = await softmax.data();
+          log('Inferencia real concluida', 'success');
+        } catch (err) {
+          log('Erro na inferencia: ' + err.message + '. Usando fallback.', 'error');
+          probabilities = generateSimulatedProbabilities();
+        } finally {
+          if (output) output.dispose();
+          if (softmax) softmax.dispose();
+        }
+      } else {
         probabilities = generateSimulatedProbabilities();
-      } finally {
-        if (output) output.dispose();
-        if (softmax) softmax.dispose();
+        log('Inferencia simulada (modelo nao carregado)', 'warn');
       }
-    } else {
-      probabilities = generateSimulatedProbabilities();
-      log('Inferencia simulada (modelo nao carregado)', 'warn');
-    }
 
-    tensor.dispose();
-    displayResults(probabilities);
-    generateHeatmap(imageSource);
-    state.isProcessing = false;
+      displayResults(probabilities);
+      generateHeatmap(imageSource);
+    } finally {
+      if (tensor) tensor.dispose();
+      state.isProcessing = false;
+    }
   }
 
   function generateSimulatedProbabilities() {
@@ -423,6 +427,7 @@
   function handleFileUpload(e) {
     var file = e.target.files[0];
     if (!file) return;
+    e.target.value = '';
     log('Imagem carregada: ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)', 'info');
 
     var img = new Image();
