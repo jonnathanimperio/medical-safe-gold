@@ -132,6 +132,7 @@
     log('Carregando modelo: ' + reg.path, 'info');
 
     try {
+      if (state.model) { state.model.dispose(); }
       state.model = await tf.loadGraphModel(reg.path);
       state.modelLoaded = true;
       dom.modelSize.textContent = 'Ativo';
@@ -235,13 +236,15 @@
     dom.infoDim.textContent = '224 x 224 x 3';
     dom.infoShape.textContent = '[1, 224, 224, 3]';
 
-    var tensor = tf.browser
-      .fromPixels(dom.previewCanvas)
-      .resizeBilinear([224, 224])
-      .toFloat()
-      .div(tf.scalar(127.5))
-      .sub(tf.scalar(1.0))
-      .expandDims(0);
+    var tensor = tf.tidy(function () {
+      return tf.browser
+        .fromPixels(dom.previewCanvas)
+        .resizeBilinear([224, 224])
+        .toFloat()
+        .div(tf.scalar(127.5))
+        .sub(tf.scalar(1.0))
+        .expandDims(0);
+    });
 
     log('Tensor gerado: shape=' + tensor.shape, 'info');
     return tensor;
@@ -404,6 +407,7 @@
 
     var img = new Image();
     img.onload = function () {
+      URL.revokeObjectURL(img.src);
       runInference(img);
     };
     img.src = URL.createObjectURL(file);
