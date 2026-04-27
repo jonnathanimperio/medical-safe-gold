@@ -11,7 +11,9 @@
     currentSpecies: 'aves',
     model: null,
     modelLoaded: false,
+    modelLoadId: 0,
     cameraActive: false,
+    cameraStarting: false,
     stream: null,
     lastFrame: null,
     isProcessing: false,
@@ -131,17 +133,25 @@
     updateIndicator(dom.indModel, 'amber', 'Modelo');
     log('Carregando modelo: ' + reg.path, 'info');
 
+    var myLoadId = ++state.modelLoadId;
+
     try {
       if (state.model) { state.model.dispose(); }
       state.model = null;
       state.modelLoaded = false;
-      state.model = await tf.loadGraphModel(reg.path);
+      var loaded = await tf.loadGraphModel(reg.path);
+      if (myLoadId !== state.modelLoadId) {
+        loaded.dispose();
+        return;
+      }
+      state.model = loaded;
       state.modelLoaded = true;
       dom.modelSize.textContent = 'Ativo';
       dom.modelStatus.textContent = 'Ready';
       updateIndicator(dom.indModel, 'green', 'Modelo');
       log('Modelo ' + reg.name + ' carregado com sucesso', 'success');
     } catch (err) {
+      if (myLoadId !== state.modelLoadId) return;
       state.modelLoaded = false;
       dom.modelSize.textContent = 'Simulado';
       dom.modelStatus.textContent = 'Fallback';
@@ -169,6 +179,9 @@
 
   // ====== CAMERA ======
   async function startCamera() {
+    if (state.cameraStarting) return;
+    state.cameraStarting = true;
+    dom.btnStartCam.disabled = true;
     try {
       log('Solicitando acesso a camera...', 'info');
       state.stream = await navigator.mediaDevices.getUserMedia({
@@ -185,6 +198,9 @@
     } catch (err) {
       log('Erro ao acessar camera: ' + err.message, 'error');
       updateIndicator(dom.indCam, 'red', 'Camera');
+    } finally {
+      state.cameraStarting = false;
+      dom.btnStartCam.disabled = false;
     }
   }
 
