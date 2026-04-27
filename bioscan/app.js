@@ -435,6 +435,10 @@
       URL.revokeObjectURL(img.src);
       runInference(img);
     };
+    img.onerror = function () {
+      URL.revokeObjectURL(img.src);
+      log('Erro: arquivo nao e uma imagem valida.', 'error');
+    };
     img.src = URL.createObjectURL(file);
   }
 
