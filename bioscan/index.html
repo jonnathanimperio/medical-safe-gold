@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jarvis BioScan Ultimate | Edge AI Gender Detection</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+</head>
+<body>
+
+  <!-- ====== LOADING SCREEN ====== -->
+  <div id="loading-screen">
+    <div class="loading-container">
+      <div class="loading-logo">
+        <div class="logo-ring"></div>
+        <div class="logo-ring ring-2"></div>
+        <div class="logo-ring ring-3"></div>
+        <span class="logo-icon">&#9670;</span>
+      </div>
+      <h1 class="loading-title">JARVIS <span class="accent">BIOSCAN</span></h1>
+      <p class="loading-subtitle">ULTIMATE EDGE AI</p>
+      <div class="loading-bar-container">
+        <div class="loading-bar" id="loading-bar"></div>
+      </div>
+      <p class="loading-status" id="loading-status">Inicializando TensorFlow Runtime...</p>
+      <div class="loading-details">
+        <span class="detail-item"><span class="dot green"></span> Edge Computing Ativo</span>
+        <span class="detail-item"><span class="dot amber"></span> Modelo Neural Pendente</span>
+        <span class="detail-item"><span class="dot red"></span> Banco Morfologico Offline</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== MAIN APP ====== -->
+  <div id="app" class="hidden">
+
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <span class="brand-icon">&#9670;</span>
+        <h1 class="brand">JARVIS <span class="accent">BIOSCAN</span></h1>
+        <span class="version-tag">v3.0 ULTIMATE</span>
+      </div>
+      <div class="topbar-center">
+        <div class="status-indicators">
+          <span class="indicator" id="ind-tf"><span class="dot green"></span> TF.js</span>
+          <span class="indicator" id="ind-model"><span class="dot amber"></span> Modelo</span>
+          <span class="indicator" id="ind-cam"><span class="dot red"></span> Camera</span>
+          <span class="indicator" id="ind-edge"><span class="dot green"></span> Edge</span>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <span class="edge-badge">SOBERANIA DE DADOS</span>
+        <span class="edge-sub">100% Local &bull; Zero Cloud</span>
+      </div>
+    </header>
+
+    <!-- SPECIES SELECTOR -->
+    <nav class="species-bar">
+      <span class="species-label">MODELO NEURAL:</span>
+      <button class="species-btn active" data-model="aves">
+        <span class="sp-icon">&#128038;</span> Aves
+      </button>
+      <button class="species-btn" data-model="peixes">
+        <span class="sp-icon">&#128031;</span> Peixes
+      </button>
+      <button class="species-btn" data-model="repteis">
+        <span class="sp-icon">&#128013;</span> Repteis
+      </button>
+      <div class="model-info" id="model-info">
+        <span id="model-name">aves.json</span> &bull;
+        <span id="model-size">--</span> &bull;
+        <span id="model-status">Aguardando</span>
+      </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-grid">
+
+      <!-- LEFT: CAMERA + HEATMAP -->
+      <section class="camera-panel">
+        <div class="panel-header">
+          <span class="panel-title">VISOR DIAGNOSTICO</span>
+          <span class="panel-badge" id="fps-counter">-- FPS</span>
+        </div>
+        <div class="camera-viewport" id="camera-viewport">
+          <video id="camera-feed" autoplay playsinline muted></video>
+          <canvas id="heatmap-canvas"></canvas>
+          <div class="scan-overlay">
+            <div class="scan-line"></div>
+            <div class="corner tl"></div>
+            <div class="corner tr"></div>
+            <div class="corner bl"></div>
+            <div class="corner br"></div>
+          </div>
+          <div class="cam-label">
+            <span class="rec-dot"></span> LIVE FEED
+          </div>
+          <div class="heatmap-label">GRAD-CAM HEATMAP</div>
+        </div>
+        <div class="camera-controls">
+          <button class="ctrl-btn" id="btn-start-cam">
+            <span>&#9654;</span> Iniciar Camera
+          </button>
+          <button class="ctrl-btn" id="btn-capture" disabled>
+            <span>&#9673;</span> Capturar Frame
+          </button>
+          <button class="ctrl-btn secondary" id="btn-upload">
+            <span>&#8679;</span> Upload Imagem
+          </button>
+          <input type="file" id="file-input" accept="image/*" hidden>
+        </div>
+      </section>
+
+      <!-- RIGHT: RESULTS + DIAGNOSTICS -->
+      <section class="results-panel">
+
+        <!-- PREVIEW -->
+        <div class="result-card">
+          <div class="card-header">
+            <span class="card-title">PRE-PROCESSAMENTO</span>
+            <span class="card-badge">224x224 RGB</span>
+          </div>
+          <div class="preview-area">
+            <canvas id="preview-canvas" width="224" height="224"></canvas>
+            <div class="preprocess-info">
+              <div class="info-row">
+                <span class="info-label">Dimensao:</span>
+                <span class="info-value" id="info-dim">--</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Normalizacao:</span>
+                <span class="info-value" id="info-norm">[-1, 1]</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Tensor Shape:</span>
+                <span class="info-value" id="info-shape">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CLASSIFICATION RESULT -->
+        <div class="result-card primary">
+          <div class="card-header">
+            <span class="card-title">RESULTADO DA CLASSIFICACAO</span>
+            <span class="card-badge softmax">Softmax Output</span>
+          </div>
+          <div class="classification-result" id="classification-result">
+            <div class="awaiting-scan">
+              <span class="await-icon">&#9713;</span>
+              <p>Aguardando imagem para analise...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- CONFIDENCE BARS -->
+        <div class="result-card">
+          <div class="card-header">
+            <span class="card-title">PROBABILIDADES DE CLASSE</span>
+            <span class="card-badge">Raw Logits</span>
+          </div>
+          <div class="confidence-bars" id="confidence-bars">
+            <div class="bar-row">
+              <span class="bar-label">MACHO</span>
+              <div class="bar-track">
+                <div class="bar-fill male" id="bar-male" style="width: 0%"></div>
+              </div>
+              <span class="bar-value" id="val-male">--</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">FEMEA</span>
+              <div class="bar-track">
+                <div class="bar-fill female" id="bar-female" style="width: 0%"></div>
+              </div>
+              <span class="bar-value" id="val-female">--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SYSTEM LOG -->
+        <div class="result-card">
+          <div class="card-header">
+            <span class="card-title">LOG DO SISTEMA</span>
+            <span class="card-badge">Runtime</span>
+          </div>
+          <div class="system-log" id="system-log">
+            <div class="log-entry info">[BOOT] Jarvis BioScan Ultimate inicializado</div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <span>JARVIS BIOSCAN ULTIMATE &copy; 2026</span>
+      <span class="footer-sep">&bull;</span>
+      <span>Edge AI &bull; TensorFlow.js</span>
+      <span class="footer-sep">&bull;</span>
+      <span>Todos os dados processados localmente &mdash; Soberania de Dados Garantida</span>
+    </footer>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
