@@ -22,6 +22,7 @@ export default function JarvisVoice() {
   const [translateProgress, setTranslateProgress] = useState("");
 
   const recorderRef = useRef<AudioRecorder | null>(null);
+  const cancelledRef = useRef(false);
 
   // Load config
   useEffect(() => {
@@ -56,11 +57,22 @@ export default function JarvisVoice() {
     setDetectedLang("en");
     setTranslatedText("");
     setSelectedLang(null);
+    cancelledRef.current = false;
+
+    // Clean up any previous recorder to prevent mic leaks
+    if (recorderRef.current) {
+      try { await recorderRef.current.stop(); } catch { /* ignore */ }
+      recorderRef.current = null;
+    }
 
     try {
       const recorder = new AudioRecorder();
-      recorderRef.current = recorder;
       await recorder.start();
+      if (cancelledRef.current) {
+        try { await recorder.stop(); } catch { /* ignore */ }
+        return;
+      }
+      recorderRef.current = recorder;
       setStep("recording");
     } catch (err) {
       setError(`Microfone: ${(err as Error).message}`);
@@ -69,6 +81,7 @@ export default function JarvisVoice() {
 
   // Stop recording and transcribe
   const stopRecording = useCallback(async () => {
+    cancelledRef.current = true;
     if (!recorderRef.current) return;
 
     try {
@@ -91,6 +104,20 @@ export default function JarvisVoice() {
       setStep("idle");
     }
   }, []);
+
+  // Global mouseup/touchend to stop recording even if cursor leaves button
+  useEffect(() => {
+    if (step !== "recording") return;
+    const handleGlobalUp = () => {
+      stopRecording();
+    };
+    window.addEventListener("mouseup", handleGlobalUp);
+    window.addEventListener("touchend", handleGlobalUp);
+    return () => {
+      window.removeEventListener("mouseup", handleGlobalUp);
+      window.removeEventListener("touchend", handleGlobalUp);
+    };
+  }, [step, stopRecording]);
 
   // Select language and translate
   const selectLanguage = useCallback(
@@ -407,9 +434,7 @@ export default function JarvisVoice() {
           {/* Main Record Button */}
           <button
             onMouseDown={startRecording}
-            onMouseUp={stopRecording}
             onTouchStart={(e) => { e.preventDefault(); startRecording(); }}
-            onTouchEnd={(e) => { e.preventDefault(); stopRecording(); }}
             disabled={
               !sttReady ||
               step === "transcribing" ||
