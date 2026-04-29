@@ -1,6 +1,16 @@
-type Pipeline = {
-  (audio: Float32Array, options?: Record<string, unknown>): Promise<{ text: string } | Array<{ text: string }>>;
+type PipelineResult = {
+  text: string;
+  chunks?: Array<{ text: string; timestamp: number[]; language?: string }>;
 };
+
+type Pipeline = {
+  (audio: Float32Array, options?: Record<string, unknown>): Promise<PipelineResult | PipelineResult[]>;
+};
+
+export interface TranscriptionResult {
+  text: string;
+  detectedLanguage: string;
+}
 
 let sttPipeline: Pipeline | null = null;
 let loading = false;
@@ -30,7 +40,7 @@ export function isSTTLoaded(): boolean {
   return sttPipeline !== null;
 }
 
-export async function transcribe(audioBlob: Blob): Promise<string> {
+export async function transcribe(audioBlob: Blob): Promise<TranscriptionResult> {
   if (!sttPipeline) {
     throw new Error("STT model not loaded");
   }
@@ -45,8 +55,16 @@ export async function transcribe(audioBlob: Blob): Promise<string> {
     language: "auto",
     task: "transcribe",
     chunk_length_s: 30,
+    return_timestamps: true,
   });
 
-  const text = Array.isArray(result) ? result[0]?.text : result.text;
-  return (text || "").trim();
+  const output = Array.isArray(result) ? result[0] : result;
+  const text = (output?.text || "").trim();
+
+  let detectedLanguage = "en";
+  if (output?.chunks && output.chunks.length > 0 && output.chunks[0].language) {
+    detectedLanguage = output.chunks[0].language;
+  }
+
+  return { text, detectedLanguage };
 }

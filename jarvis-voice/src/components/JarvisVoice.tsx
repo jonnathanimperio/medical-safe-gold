@@ -14,6 +14,7 @@ export default function JarvisVoice() {
   const [sttProgress, setSttProgress] = useState(0);
   const [sttStatus, setSttStatus] = useState("");
   const [originalText, setOriginalText] = useState("");
+  const [detectedLang, setDetectedLang] = useState("en");
   const [translatedText, setTranslatedText] = useState("");
   const [selectedLang, setSelectedLang] = useState<Language | null>(null);
   const [history, setHistory] = useState<DubbingResult[]>([]);
@@ -21,7 +22,6 @@ export default function JarvisVoice() {
   const [translateProgress, setTranslateProgress] = useState("");
 
   const recorderRef = useRef<AudioRecorder | null>(null);
-  const audioBlobRef = useRef<Blob | null>(null);
 
   // Load config
   useEffect(() => {
@@ -53,6 +53,7 @@ export default function JarvisVoice() {
   const startRecording = useCallback(async () => {
     setError(null);
     setOriginalText("");
+    setDetectedLang("en");
     setTranslatedText("");
     setSelectedLang(null);
 
@@ -73,10 +74,9 @@ export default function JarvisVoice() {
     try {
       setStep("transcribing");
       const blob = await recorderRef.current.stop();
-      audioBlobRef.current = blob;
       recorderRef.current = null;
 
-      const text = await transcribe(blob);
+      const { text, detectedLanguage } = await transcribe(blob);
       if (!text) {
         setError("Nenhuma fala detectada. Tente novamente.");
         setStep("idle");
@@ -84,6 +84,7 @@ export default function JarvisVoice() {
       }
 
       setOriginalText(text);
+      setDetectedLang(detectedLanguage);
       setStep("selecting_language");
     } catch (err) {
       setError(`Transcrição: ${(err as Error).message}`);
@@ -100,7 +101,7 @@ export default function JarvisVoice() {
       setTranslateProgress("Carregando modelo de tradução...");
 
       try {
-        const translated = await translate(originalText, "en", lang.code, (p) => {
+        const translated = await translate(originalText, detectedLang, lang.code, (p) => {
           setTranslateProgress(p.status === "progress" ? `Baixando: ${Math.round(p.progress || 0)}%` : p.status);
         });
         setTranslatedText(translated);
@@ -122,7 +123,7 @@ export default function JarvisVoice() {
         const result: DubbingResult = {
           originalText,
           translatedText: translated,
-          sourceLanguage: "auto",
+          sourceLanguage: detectedLang,
           targetLanguage: lang,
           timestamp: Date.now(),
         };
@@ -133,13 +134,14 @@ export default function JarvisVoice() {
         setStep("selecting_language");
       }
     },
-    [originalText, config]
+    [originalText, detectedLang, config]
   );
 
   const reset = useCallback(() => {
     stopSpeaking();
     setStep("idle");
     setOriginalText("");
+    setDetectedLang("en");
     setTranslatedText("");
     setSelectedLang(null);
     setError(null);
